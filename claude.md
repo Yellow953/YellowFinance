@@ -13,10 +13,9 @@ A personal finance mobile app with expense/income tracking, AI-powered financial
 | State Management | GetX |
 | Architecture | MVC (Model / View / Controller) |
 | Backend | Firebase (Firestore, Auth, Storage, Functions) |
-| AI Analysis | Anthropic Claude API (via Firebase Functions) |
-| Market Data | Alpha Vantage or CoinGecko API (via Firebase Functions) |
+| AI Analysis | Google Gemini |
+| Market Data | CoinGecko API (via Firebase Functions) |
 | Local Storage | flutter_secure_storage (sensitive), shared_preferences (non-sensitive) |
-| HTTP | dio |
 | Charts | fl_chart |
 
 ---
@@ -50,7 +49,7 @@ No gradients. No heavy shadows. Flat, clean surfaces. Yellow is accent only — 
 1. **Splash** — White bg, yellow rounded square logo mark, "YellowFinance" wordmark, tagline
 2. **Home** — White top section with dark balance hero card, quick action grid (Add / Invest / AI / Reports), recent transactions list
 3. **Portfolio** — Dark balance card, filter chips (All / Stocks / Crypto / Gold), asset list rows, AI insight strip
-4. **AI Chat** — Conversational interface, Claude API responses, financial context injected
+4. **AI Chat** — Conversational interface, Gemini, financial context injected
 5. **Reports** — Charts (fl_chart), monthly breakdown, category pie
 6. **Auth** — Login / Register / Forgot Password (clean, minimal)
 
@@ -342,7 +341,7 @@ Create a `/functions` directory alongside `/lib`.
 functions/
 ├── index.js
 ├── ai/
-│   └── analyzeFinances.js     # Calls Claude API with user financial context
+│   └── analyzeFinances.js     # Calls Gemini API with user financial context
 └── market/
     └── fetchPrices.js         # Fetches live prices for portfolio assets
 ```
@@ -351,7 +350,7 @@ functions/
 - Accepts: `{ userId, prompt }` (callable function)
 - Fetches last 90 days of transactions from Firestore
 - Builds context summary (income, expenses, categories, portfolio)
-- Calls Claude API with context + user prompt
+- Calls Gemini API with context + user prompt
 - Returns AI response text
 - Rate limit: 20 calls/user/day stored in Firestore
 

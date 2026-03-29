@@ -5,7 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 /// Thin wrapper around [FirebaseAuth].
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
   User? get currentUser => _auth.currentUser;
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -41,17 +41,13 @@ class AuthService {
 
   /// Signs in with Google.
   Future<UserCredential> signInWithGoogle() async {
-    final googleUser = await _googleSignIn.signIn();
-    if (googleUser == null) {
-      throw FirebaseAuthException(
-        code: 'sign-in-cancelled',
-        message: 'Google sign-in was cancelled.',
-      );
-    }
-    final googleAuth = await googleUser.authentication;
+    await _googleSignIn.initialize();
+    final googleUser = await _googleSignIn.authenticate();
+    final authorization = await _googleSignIn.authorizationClient
+        .authorizeScopes(['email']);
     final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
+      accessToken: authorization.accessToken,
+      idToken: googleUser.authentication.idToken,
     );
     return _auth.signInWithCredential(credential);
   }

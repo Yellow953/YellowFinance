@@ -32,6 +32,7 @@ class _AiChatViewState extends State<AiChatView> {
   void initState() {
     super.initState();
     _scrollWorker = ever(controller.messages, (_) => _scrollToBottom());
+    ever(controller.isThinking, (_) => _scrollToBottom());
   }
 
   @override
@@ -151,14 +152,15 @@ class _AiChatViewState extends State<AiChatView> {
                         );
                       }),
                     ),
-                    _InputBar(
+                    Obx(() => _InputBar(
                       controller: _inputCtrl,
+                      enabled: controller.canSend.value && !controller.isThinking.value,
                       onSend: () {
                         final text = _inputCtrl.text;
                         _inputCtrl.clear();
                         controller.sendMessage(text);
                       },
-                    ),
+                    )),
                   ],
                 ),
               ),
@@ -311,8 +313,9 @@ class _TypingIndicator extends StatelessWidget {
 class _InputBar extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onSend;
+  final bool enabled;
 
-  const _InputBar({required this.controller, required this.onSend});
+  const _InputBar({required this.controller, required this.onSend, required this.enabled});
 
   @override
   Widget build(BuildContext context) {
@@ -332,6 +335,7 @@ class _InputBar extends StatelessWidget {
           Expanded(
             child: TextField(
               controller: controller,
+              enabled: enabled,
               textCapitalization: TextCapitalization.sentences,
               maxLines: 4,
               minLines: 1,
@@ -346,21 +350,21 @@ class _InputBar extends StatelessWidget {
                 contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16, vertical: 10),
               ),
-              onSubmitted: (_) => onSend(),
+              onSubmitted: (_) => enabled ? onSend() : null,
             ),
           ),
           const SizedBox(width: 10),
           GestureDetector(
-            onTap: onSend,
+            onTap: enabled ? onSend : null,
             child: Container(
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: AppColors.primary,
+                color: enabled ? AppColors.primary : AppColors.border,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.send_rounded,
-                  size: 18, color: AppColors.dark),
+              child: Icon(Icons.send_rounded,
+                  size: 18, color: enabled ? AppColors.dark : AppColors.textMuted),
             ),
           ),
         ],

@@ -3,7 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// Wraps [FlutterSecureStorage] for sensitive local data.
 class SecureStorageService {
   static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(),
   );
 
   static const String _keyLastActiveAt = 'last_active_at';

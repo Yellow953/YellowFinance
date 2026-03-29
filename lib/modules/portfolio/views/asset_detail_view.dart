@@ -375,7 +375,7 @@ class _PriceChart extends StatelessWidget {
                     dashArray: [4, 4]),
                 FlDotData(
                   show: true,
-                  getDotPainter: (_, __, ___, ____) =>
+                  getDotPainter: (_, _, _, _) =>
                       FlDotCirclePainter(
                     radius: 5,
                     color: lineColor,
@@ -388,7 +388,7 @@ class _PriceChart extends StatelessWidget {
           },
           touchTooltipData: LineTouchTooltipData(
             getTooltipColor: (_) => AppColors.dark,
-            tooltipRoundedRadius: 8,
+            tooltipBorderRadius: BorderRadius.circular(8),
             tooltipPadding: const EdgeInsets.symmetric(
                 horizontal: 10, vertical: 6),
             getTooltipItems: (touchedSpots) {

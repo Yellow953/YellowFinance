@@ -75,7 +75,7 @@ User's last 90 days financial summary (amounts in cents):
   // Call Gemini API
   const { GoogleGenerativeAI } = require('@google/generative-ai');
   const genAI = new GoogleGenerativeAI(geminiApiKey.value());
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
   const fullPrompt = `You are a personal finance advisor. Here is the user's financial context:\n${contextSummary}\n\nUser question: ${prompt}\n\nProvide a helpful, concise, and actionable response.`;
 

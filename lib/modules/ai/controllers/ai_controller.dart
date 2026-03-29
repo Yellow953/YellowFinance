@@ -32,7 +32,7 @@ class AiController extends GetxController {
   /// Sends a user message and fetches the AI response via Firebase Function.
   Future<void> sendMessage(String content) async {
     final uid = Get.find<AuthController>().user.value?.uid;
-    if (uid == null || content.trim().isEmpty) return;
+    if (uid == null || content.trim().isEmpty || isThinking.value) return;
     if (!canSend.value) {
       AppSnackbar.show('Limit reached',
           'You\'ve used all 20 AI calls for today. Try again tomorrow.');
@@ -69,11 +69,11 @@ class AiController extends GetxController {
       await _aiRepo.saveConversation(uid, messages.toList());
       canSend.value = await _aiRepo.canMakeAiCall(uid);
     } catch (e) {
+      debugPrint('AiController.sendMessage error: $e');
       messages.add(AiMessageModel(
         id: _uuid.v4(),
         role: 'assistant',
-        content:
-            'Sorry, I couldn\'t process your request. Please try again.',
+        content: 'Sorry, I couldn\'t process your request. Please try again.',
         timestamp: DateTime.now(),
       ));
     } finally {

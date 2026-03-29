@@ -59,14 +59,14 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Container(
-                        width: 48,
-                        height: 48,
+                        width: 56,
+                        height: 56,
                         decoration: BoxDecoration(
-                          color: AppColors.primary,
+                          border: Border.all(color: AppColors.primary, width: 2),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: const Icon(Icons.lock_reset_rounded,
-                            color: AppColors.dark, size: 26),
+                        padding: const EdgeInsets.all(6),
+                        child: Image.asset('assets/images/YellowFinanceLogo3.png'),
                       ),
                       const SizedBox(width: 14),
                       Column(

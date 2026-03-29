@@ -11,6 +11,7 @@ class ReportsController extends GetxController {
   final RxList<TransactionModel> transactions = <TransactionModel>[].obs;
   final RxBool isLoading = false.obs;
   final Rx<DateTime> selectedMonth = DateTime.now().obs;
+  final RxInt touchedPieIndex = (-1).obs;
 
   ReportsController({required TransactionRepository txnRepo})
       : _txnRepo = txnRepo;
@@ -79,6 +80,30 @@ class ReportsController extends GetxController {
     }
     return Map.fromEntries(
         map.entries.toList()..sort((a, b) => b.value.compareTo(a.value)));
+  }
+
+  /// Transactions for [selectedMonth] grouped by day, newest first.
+  List<({DateTime date, List<TransactionModel> txns})> get transactionsByDay {
+    final grouped = <String, List<TransactionModel>>{};
+    for (final t in monthlyTransactions) {
+      final key = '${t.date.year}-${t.date.month.toString().padLeft(2, '0')}-${t.date.day.toString().padLeft(2, '0')}';
+      (grouped[key] ??= []).add(t);
+    }
+    final result = grouped.entries.map((e) {
+      final parts = e.key.split('-');
+      return (
+        date: DateTime(
+            int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2])),
+        txns: e.value..sort((a, b) => b.date.compareTo(a.date)),
+      );
+    }).toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+    return result;
+  }
+
+  void setSelectedMonth(DateTime month) {
+    selectedMonth.value = month;
+    touchedPieIndex.value = -1;
   }
 
   void previousMonth() {

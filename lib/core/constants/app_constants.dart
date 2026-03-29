@@ -30,12 +30,13 @@ abstract class AppConstants {
   static const List<String> incomeCategories = [
     'Salary',
     'Project',
+    'Business',
   ];
 
   // Expense categories
   static const List<String> expenseCategories = [
     'Food',
-    'Fuel',
+    'Transport',
     'Misc',
     'Investment',
     'Business',

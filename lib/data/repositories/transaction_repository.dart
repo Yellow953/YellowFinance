@@ -21,6 +21,54 @@ class TransactionRepository {
             snap.docs.map(TransactionModel.fromFirestore).toList());
   }
 
+  /// Fetches a page of transactions for [uid].
+  ///
+  /// Pass [startAfter] to get the next page (cursor-based pagination).
+  /// Optionally filter by [startDate] and [endDate].
+  Future<({List<TransactionModel> transactions, DocumentSnapshot? lastDoc})>
+      fetchPage({
+    required String uid,
+    int limit = 20,
+    DocumentSnapshot? startAfter,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    Query<Map<String, dynamic>> query = _firestore
+        .transactionsCollection(uid)
+        .orderBy('date', descending: true)
+        .limit(limit);
+
+    if (startDate != null) {
+      query = query.where(
+        'date',
+        isLessThanOrEqualTo: Timestamp.fromDate(
+          endDate ?? DateTime.now(),
+        ),
+      );
+      query = query.where(
+        'date',
+        isGreaterThanOrEqualTo: Timestamp.fromDate(startDate),
+      );
+    } else if (endDate != null) {
+      query = query.where(
+        'date',
+        isLessThanOrEqualTo: Timestamp.fromDate(endDate),
+      );
+    }
+
+    if (startAfter != null) {
+      query = query.startAfterDocument(startAfter);
+    }
+
+    final snap = await query
+        .get(const GetOptions(source: Source.serverAndCache))
+        .timeout(const Duration(seconds: 10));
+    return (
+      transactions: snap.docs.map(TransactionModel.fromFirestore).toList(),
+      lastDoc: snap.docs.isNotEmpty ? snap.docs.last : null,
+    );
+  }
+
   /// Fetches transactions within the last [days] days.
   Future<List<TransactionModel>> fetchRecent(String uid, {int days = 90}) async {
     final since = DateTime.now().subtract(Duration(days: days));

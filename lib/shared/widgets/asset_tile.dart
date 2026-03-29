@@ -8,14 +8,12 @@ import '../../data/models/asset_model.dart';
 class AssetTile extends StatelessWidget {
   final AssetModel asset;
   final VoidCallback? onTap;
-  final VoidCallback? onAskAi;
   final bool hideAmount;
 
   const AssetTile({
     super.key,
     required this.asset,
     this.onTap,
-    this.onAskAi,
     this.hideAmount = false,
   });
 
@@ -128,29 +126,6 @@ class AssetTile extends StatelessWidget {
                     style:
                         AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted)),
             ],
-          ),
-          const SizedBox(width: 10),
-
-          // Ask AI button
-          GestureDetector(
-            onTap: onAskAi,
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.aiStrip,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.aiBorder),
-              ),
-              child: const Text(
-                'Ask AI',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF92400E),
-                ),
-              ),
-            ),
           ),
         ],
       ),

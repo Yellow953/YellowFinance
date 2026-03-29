@@ -104,7 +104,10 @@ class _PortfolioViewState extends State<PortfolioView> {
                       child: CircularProgressIndicator(color: AppColors.primary),
                     );
                   }
-                  return CustomScrollView(
+                  return RefreshIndicator(
+                    color: AppColors.primary,
+                    onRefresh: controller.refreshPrices,
+                    child: CustomScrollView(
                     slivers: [
                       SliverToBoxAdapter(
                         child: Padding(
@@ -118,42 +121,6 @@ class _PortfolioViewState extends State<PortfolioView> {
                                     onSelected: (f) =>
                                         controller.selectedFilter.value = f,
                                   )),
-                              const SizedBox(height: 16),
-                              // AI insight strip
-                              GestureDetector(
-                                onTap: () => Get.toNamed(AppRoutes.AI_CHAT),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 14, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.aiStrip,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border:
-                                        Border.all(color: AppColors.aiBorder),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.auto_awesome_rounded,
-                                          color: Color(0xFF92400E), size: 16),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          'Ask AI to research any asset in your watchlist.',
-                                          style:
-                                              AppTextStyles.bodySmall.copyWith(
-                                            color: const Color(0xFF92400E),
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                      const Icon(
-                                          Icons.arrow_forward_ios_rounded,
-                                          size: 12,
-                                          color: Color(0xFF92400E)),
-                                    ],
-                                  ),
-                                ),
-                              ),
                               const SizedBox(height: 16),
                             ],
                           ),
@@ -211,13 +178,6 @@ class _PortfolioViewState extends State<PortfolioView> {
                                         AppRoutes.ASSET_DETAIL,
                                         arguments: asset,
                                       ),
-                                      onAskAi: () => Get.toNamed(
-                                        AppRoutes.AI_CHAT,
-                                        arguments: {
-                                          'prompt':
-                                              'Analyze ${asset.symbol} (${asset.type}) for me. Give me a brief overview of its recent performance, key metrics, and whether it looks like a good opportunity right now.'
-                                        },
-                                      ),
                                     )),
                                     if (i < list.length - 1)
                                       const Divider(
@@ -234,6 +194,7 @@ class _PortfolioViewState extends State<PortfolioView> {
                       }),
                       const SliverToBoxAdapter(child: SizedBox(height: 100)),
                     ],
+                  ),
                   );
                 }),
               ),

@@ -13,8 +13,14 @@ class PortfolioController extends GetxController {
   final RxList<AssetModel> assets = <AssetModel>[].obs;
   final RxString selectedFilter = 'All'.obs;
   final RxBool isLoading = false.obs;
+  final RxBool isRefreshing = false.obs;
 
   StreamSubscription<List<AssetModel>>? _sub;
+
+  // In-memory price cache: symbol → (price, change24h, fetchedAt)
+  final Map<String, ({double? price, double? change24h, DateTime fetchedAt})>
+      _priceCache = {};
+  static const _priceCacheTtl = Duration(minutes: 5);
 
   static const List<String> filterOptions = [
     'All',
@@ -91,9 +97,24 @@ class PortfolioController extends GetxController {
   }
 
   Future<List<AssetModel>> _enrichWithMarketData(
-      List<AssetModel> list) async {
+      List<AssetModel> list, {bool forceRefresh = false}) async {
+    final now = DateTime.now();
     final results = await Future.wait(
-      list.map((asset) => _portfolioRepo.fetchMarketData(asset.symbol)),
+      list.map((asset) async {
+        final cached = _priceCache[asset.symbol];
+        if (!forceRefresh &&
+            cached != null &&
+            now.difference(cached.fetchedAt) < _priceCacheTtl) {
+          return (price: cached.price, change24h: cached.change24h);
+        }
+        final fresh = await _portfolioRepo.fetchMarketData(asset.symbol);
+        _priceCache[asset.symbol] = (
+          price: fresh.price,
+          change24h: fresh.change24h,
+          fetchedAt: now,
+        );
+        return fresh;
+      }),
     );
     return [
       for (var i = 0; i < list.length; i++)
@@ -102,6 +123,24 @@ class PortfolioController extends GetxController {
           change24h: results[i].change24h,
         ),
     ];
+  }
+
+  /// Forces a fresh price fetch and rebuilds the asset list.
+  Future<void> refreshPrices() async {
+    if (assets.isEmpty) return;
+    isRefreshing.value = true;
+    try {
+      final stripped = assets
+          .map((a) => a.withMarketData(price: null, change24h: null))
+          .toList();
+      final refreshed = await _enrichWithMarketData(
+        stripped,
+        forceRefresh: true,
+      );
+      assets.assignAll(refreshed);
+    } finally {
+      isRefreshing.value = false;
+    }
   }
 
   List<AssetModel> get filteredAssets {

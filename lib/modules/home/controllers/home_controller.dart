@@ -61,5 +61,5 @@ class HomeController extends GetxController {
   }
 
   List<TransactionModel> get recentTransactions =>
-      transactions.take(10).toList();
+      transactions.take(5).toList();
 }

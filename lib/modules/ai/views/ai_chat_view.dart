@@ -33,6 +33,17 @@ class _AiChatViewState extends State<AiChatView> {
     super.initState();
     _scrollWorker = ever(controller.messages, (_) => _scrollToBottom());
     ever(controller.isThinking, (_) => _scrollToBottom());
+
+    // Auto-trigger asset analysis if launched from asset detail page.
+    final args = Get.arguments;
+    if (args is Map && args.containsKey('assetContext')) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.sendAssetAnalysis(
+          args['prompt'] as String,
+          args['assetContext'] as String,
+        );
+      });
+    }
   }
 
   @override
@@ -80,7 +91,7 @@ class _AiChatViewState extends State<AiChatView> {
                       color: AppColors.primary,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.auto_awesome_rounded,
+                    child: const Icon(Icons.smart_toy_rounded,
                         size: 22, color: AppColors.dark),
                   ),
                   const SizedBox(width: 14),
@@ -190,7 +201,7 @@ class _EmptyChat extends StatelessWidget {
                 color: AppColors.primary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(Icons.auto_awesome_rounded,
+              child: const Icon(Icons.smart_toy_rounded,
                   size: 32, color: AppColors.primary),
             ),
             const SizedBox(height: 16),
@@ -203,6 +214,84 @@ class _EmptyChat extends StatelessWidget {
               style: AppTextStyles.bodySmall,
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: 24),
+            // Quick-start cards
+            _QuickCard(
+              icon: Icons.bar_chart_rounded,
+              title: 'Analyze Spending',
+              subtitle: 'Compare this month vs last month',
+              analysisType: 'spending_comparison',
+            ),
+            const SizedBox(height: 10),
+            _QuickCard(
+              icon: Icons.trending_up_rounded,
+              title: 'Market Insights',
+              subtitle: 'Where to invest this month',
+              analysisType: 'market_analysis',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String analysisType;
+
+  const _QuickCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.analysisType,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = Get.find<AiController>();
+    return GestureDetector(
+      onTap: () => ctrl.sendQuickAnalysis(analysisType),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 20, color: AppColors.primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary)),
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.textMuted)),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded,
+                size: 14, color: AppColors.textMuted),
           ],
         ),
       ),
@@ -233,7 +322,7 @@ class _MessageBubble extends StatelessWidget {
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.auto_awesome_rounded,
+              child: const Icon(Icons.smart_toy_rounded,
                   size: 14, color: AppColors.dark),
             ),
             const SizedBox(width: 8),
@@ -284,7 +373,7 @@ class _TypingIndicator extends StatelessWidget {
               color: AppColors.primary,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.auto_awesome_rounded,
+            child: const Icon(Icons.smart_toy_rounded,
                 size: 14, color: AppColors.dark),
           ),
           const SizedBox(width: 8),
@@ -305,6 +394,57 @@ class _TypingIndicator extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+class _QuickChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _QuickChip({
+    required this.icon,
+    required this.label,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: enabled
+              ? AppColors.primary.withValues(alpha: 0.10)
+              : AppColors.border.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: enabled ? AppColors.primary.withValues(alpha: 0.4) : AppColors.border,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon,
+                size: 13,
+                color: enabled ? AppColors.dark : AppColors.textMuted),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: enabled ? AppColors.dark : AppColors.textMuted,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

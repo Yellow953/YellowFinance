@@ -327,7 +327,7 @@ class _CategoryGrid extends StatelessWidget {
 
   static const _expenseItems = [
     (label: 'Food', icon: Icons.restaurant_rounded),
-    (label: 'Fuel', icon: Icons.local_gas_station_rounded),
+    (label: 'Transport', icon: Icons.directions_car_rounded),
     (label: 'Misc', icon: Icons.grid_view_rounded),
     (label: 'Investment', icon: Icons.trending_up_rounded),
     (label: 'Business', icon: Icons.business_center_rounded),
@@ -336,6 +336,7 @@ class _CategoryGrid extends StatelessWidget {
   static const _incomeItems = [
     (label: 'Salary', icon: Icons.account_balance_wallet_rounded),
     (label: 'Project', icon: Icons.work_outline_rounded),
+    (label: 'Business', icon: Icons.business_center_rounded),
   ];
 
   @override

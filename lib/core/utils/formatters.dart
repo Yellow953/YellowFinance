@@ -42,6 +42,11 @@ abstract class Formatters {
     return DateFormat('MMMM yyyy').format(date);
   }
 
+  /// Formats a [DateTime] as "Sunday, 29 Mar".
+  static String dateDayMonthFull(DateTime date) {
+    return DateFormat('EEEE, d MMM').format(date);
+  }
+
   /// Formats a percentage value.
   static String percent(double value, {int decimals = 2}) {
     return '${value >= 0 ? '+' : ''}${value.toStringAsFixed(decimals)}%';

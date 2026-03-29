@@ -112,13 +112,57 @@ class _AssetDetailViewState extends State<AssetDetailView> {
                       const Spacer(),
                       // Ask AI shortcut
                       GestureDetector(
-                        onTap: () => Get.toNamed(
-                          AppRoutes.AI_CHAT,
-                          arguments: {
-                            'prompt':
-                                'Analyze ${asset.symbol} (${asset.type}) for me. Give me a brief overview of recent performance, key metrics, and whether it looks like a good opportunity right now.'
-                          },
-                        ),
+                        onTap: () {
+                          final range = _ctrl.selectedRange.value;
+                          final spots = _ctrl.spots;
+                          final high = _ctrl.chartHigh.value;
+                          final low = _ctrl.chartLow.value;
+                          final current = asset.currentPrice;
+                          final change24h = asset.priceChange24h;
+
+                          final hasChart = spots.length >= 2;
+                          final startPrice = hasChart ? spots.first.y : null;
+                          final endPrice = hasChart ? spots.last.y : null;
+                          final periodChangePct = (startPrice != null &&
+                                  startPrice > 0 &&
+                                  endPrice != null)
+                              ? ((endPrice - startPrice) / startPrice * 100)
+                                  .toStringAsFixed(2)
+                              : null;
+
+                          final buf = StringBuffer();
+                          buf.writeln('Asset: ${asset.symbol} (${asset.type})');
+                          buf.writeln('Selected period: $range chart');
+                          if (current != null) {
+                            buf.writeln(
+                                'Current price: \$${current.toStringAsFixed(2)}');
+                          }
+                          if (change24h != null) {
+                            buf.writeln(
+                                '24h change: ${change24h >= 0 ? '+' : ''}${change24h.toStringAsFixed(2)}%');
+                          }
+                          if (hasChart) {
+                            buf.writeln(
+                                'Period high: \$${high.toStringAsFixed(2)}');
+                            buf.writeln(
+                                'Period low: \$${low.toStringAsFixed(2)}');
+                            if (periodChangePct != null) {
+                              buf.writeln(
+                                  'Period performance: ${double.parse(periodChangePct) >= 0 ? '+' : ''}$periodChangePct% over $range');
+                            }
+                          }
+
+                          final displayPrompt =
+                              'Analyze ${asset.symbol} — $range chart';
+
+                          Get.toNamed(
+                            AppRoutes.AI_CHAT,
+                            arguments: {
+                              'prompt': displayPrompt,
+                              'assetContext': buf.toString().trim(),
+                            },
+                          );
+                        },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 7),

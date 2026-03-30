@@ -9,6 +9,7 @@ import 'core/constants/app_constants.dart';
 import 'core/constants/app_colors.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/connectivity_service.dart';
+import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'data/providers/firestore_provider.dart';
 import 'data/repositories/auth_repository.dart';
@@ -31,6 +32,9 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Initialize local notification scheduler.
+  await NotificationService.init();
 
   // Enable Firestore offline persistence so reads work without internet.
   FirebaseFirestore.instance.settings = const Settings(

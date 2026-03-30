@@ -16,7 +16,7 @@ class _MainLayoutState extends State<MainLayout> {
 
   final List<String> _routes = [
     AppRoutes.HOME,
-    AppRoutes.TRANSACTIONS,
+    AppRoutes.TODOS,
     AppRoutes.PORTFOLIO,
     AppRoutes.REPORTS,
     AppRoutes.AI_CHAT,

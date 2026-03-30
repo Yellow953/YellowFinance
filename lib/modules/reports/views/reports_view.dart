@@ -25,7 +25,7 @@ class _ReportsViewState extends State<ReportsView> {
 
   static const _routes = [
     AppRoutes.HOME,
-    AppRoutes.TRANSACTIONS,
+    AppRoutes.TODOS,
     AppRoutes.PORTFOLIO,
     AppRoutes.REPORTS,
     AppRoutes.AI_CHAT,

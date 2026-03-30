@@ -22,7 +22,7 @@ class _AiChatViewState extends State<AiChatView> {
 
   static const _routes = [
     AppRoutes.HOME,
-    AppRoutes.TRANSACTIONS,
+    AppRoutes.TODOS,
     AppRoutes.PORTFOLIO,
     AppRoutes.REPORTS,
     AppRoutes.AI_CHAT,
@@ -394,57 +394,6 @@ class _TypingIndicator extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-
-class _QuickChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool enabled;
-  final VoidCallback onTap;
-
-  const _QuickChip({
-    required this.icon,
-    required this.label,
-    required this.enabled,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: enabled ? onTap : null,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: enabled
-              ? AppColors.primary.withValues(alpha: 0.10)
-              : AppColors.border.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: enabled ? AppColors.primary.withValues(alpha: 0.4) : AppColors.border,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon,
-                size: 13,
-                color: enabled ? AppColors.dark : AppColors.textMuted),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: enabled ? AppColors.dark : AppColors.textMuted,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

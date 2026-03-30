@@ -14,7 +14,7 @@ class AppNavBar extends StatelessWidget {
 
   static const _icons = [
     (Icons.home_rounded, Icons.home_outlined),
-    (Icons.receipt_long_rounded, Icons.receipt_long_outlined),
+    (Icons.checklist_rounded, Icons.checklist_outlined),
     (Icons.candlestick_chart_rounded, Icons.candlestick_chart_outlined),
     (Icons.bar_chart_rounded, Icons.bar_chart_outlined),
     (Icons.smart_toy_rounded, Icons.smart_toy_outlined),

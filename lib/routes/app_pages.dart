@@ -14,6 +14,8 @@ import '../modules/portfolio/views/asset_detail_view.dart';
 import '../modules/portfolio/views/portfolio_view.dart';
 import '../modules/reports/bindings/reports_binding.dart';
 import '../modules/reports/views/reports_view.dart';
+import '../modules/todos/bindings/todo_binding.dart';
+import '../modules/todos/views/todos_view.dart';
 import '../modules/transactions/bindings/transaction_binding.dart';
 import '../modules/transactions/views/add_transaction_view.dart';
 import '../modules/transactions/views/transactions_view.dart';
@@ -45,6 +47,12 @@ abstract class AppPages {
       name: AppRoutes.HOME,
       page: () => const HomeView(),
       binding: HomeBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: AppRoutes.TODOS,
+      page: () => const TodosView(),
+      binding: TodoBinding(),
       middlewares: [AuthMiddleware()],
     ),
     GetPage(

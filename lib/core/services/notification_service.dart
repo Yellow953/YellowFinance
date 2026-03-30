@@ -26,11 +26,11 @@ abstract class NotificationService {
     // Load timezone database (device local timezone is picked automatically).
     tz.initializeTimeZones();
 
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-
     await _plugin.initialize(
-      settings: const InitializationSettings(android: androidSettings),
+      settings: const InitializationSettings(
+        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        iOS: DarwinInitializationSettings(),
+      ),
       onDidReceiveNotificationResponse: _onTap,
     );
 

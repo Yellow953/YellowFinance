@@ -25,7 +25,7 @@ class _TransactionsViewState extends State<TransactionsView> {
 
   static const _routes = [
     AppRoutes.HOME,
-    AppRoutes.TRANSACTIONS,
+    AppRoutes.TODOS,
     AppRoutes.PORTFOLIO,
     AppRoutes.REPORTS,
     AppRoutes.AI_CHAT,
@@ -69,10 +69,8 @@ class _TransactionsViewState extends State<TransactionsView> {
     return Scaffold(
       backgroundColor: AppColors.dark,
       bottomNavigationBar: AppNavBar(
-        currentIndex: 1,
-        onTap: (i) {
-          if (i != 1) Get.offNamed(_routes[i]);
-        },
+        currentIndex: -1,
+        onTap: (i) => Get.offNamed(_routes[i]),
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,

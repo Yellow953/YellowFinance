@@ -107,8 +107,8 @@ class TodoController extends GetxController {
         }).toList();
       case 'Done':
         return todos.where((t) => t.isCompleted).toList();
-      default: // All
-        return todos.toList();
+      default: // All — excludes completed tasks (use 'Done' tab to see those)
+        return todos.where((t) => !t.isCompleted).toList();
     }
   }
 

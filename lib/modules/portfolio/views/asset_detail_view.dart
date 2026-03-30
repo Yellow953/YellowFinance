@@ -39,6 +39,31 @@ class _AssetDetailViewState extends State<AssetDetailView> {
     super.dispose();
   }
 
+  static String _intervalLabel(String range) => switch (range) {
+        '1D' => '5-minute',
+        '1W' => '1-hour',
+        '1M' => 'daily',
+        '3M' => 'daily',
+        '1Y' => 'weekly',
+        _ => 'monthly',
+      };
+
+  /// Evenly samples [points] down to at most [max] entries, always keeping
+  /// the first and last so the AI sees the full period boundaries.
+  static List<({DateTime time, double price})> _sample(
+    List<({DateTime time, double price})> points,
+    int max,
+  ) {
+    if (points.length <= max) return points;
+    final result = <({DateTime time, double price})>[];
+    final step = (points.length - 1) / (max - 1);
+    for (var i = 0; i < max - 1; i++) {
+      result.add(points[(i * step).round()]);
+    }
+    result.add(points.last);
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     final asset = _ctrl.asset;
@@ -114,15 +139,16 @@ class _AssetDetailViewState extends State<AssetDetailView> {
                       GestureDetector(
                         onTap: () {
                           final range = _ctrl.selectedRange.value;
-                          final spots = _ctrl.spots;
+                          final history = _ctrl.currentHistory;
                           final high = _ctrl.chartHigh.value;
                           final low = _ctrl.chartLow.value;
                           final current = asset.currentPrice;
                           final change24h = asset.priceChange24h;
 
-                          final hasChart = spots.length >= 2;
-                          final startPrice = hasChart ? spots.first.y : null;
-                          final endPrice = hasChart ? spots.last.y : null;
+                          final hasChart = history.length >= 2;
+                          final startPrice =
+                              hasChart ? history.first.price : null;
+                          final endPrice = hasChart ? history.last.price : null;
                           final periodChangePct = (startPrice != null &&
                                   startPrice > 0 &&
                                   endPrice != null)
@@ -132,7 +158,8 @@ class _AssetDetailViewState extends State<AssetDetailView> {
 
                           final buf = StringBuffer();
                           buf.writeln('Asset: ${asset.symbol} (${asset.type})');
-                          buf.writeln('Selected period: $range chart');
+                          buf.writeln(
+                              'Selected period: $range (${_intervalLabel(range)} intervals)');
                           if (current != null) {
                             buf.writeln(
                                 'Current price: \$${current.toStringAsFixed(2)}');
@@ -149,6 +176,18 @@ class _AssetDetailViewState extends State<AssetDetailView> {
                             if (periodChangePct != null) {
                               buf.writeln(
                                   'Period performance: ${double.parse(periodChangePct) >= 0 ? '+' : ''}$periodChangePct% over $range');
+                            }
+
+                            // Sampled price series with timestamps (max 60 pts).
+                            final sampled = _sample(history, 60);
+                            buf.writeln(
+                                '\nPrice series (${sampled.length} data points, oldest → newest):');
+                            for (final pt in sampled) {
+                              final ts =
+                                  '${pt.time.year}-${pt.time.month.toString().padLeft(2, '0')}-${pt.time.day.toString().padLeft(2, '0')} '
+                                  '${pt.time.hour.toString().padLeft(2, '0')}:${pt.time.minute.toString().padLeft(2, '0')}';
+                              buf.writeln(
+                                  '$ts  \$${pt.price.toStringAsFixed(2)}');
                             }
                           }
 

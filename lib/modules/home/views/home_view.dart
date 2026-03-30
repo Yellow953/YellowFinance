@@ -203,7 +203,9 @@ class _HomeViewState extends State<HomeView> {
                     Row(
                       children: [
                         Expanded(child: _ReportsCard()),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
+                        Expanded(child: _TasksCard()),
+                        const SizedBox(width: 8),
                         Expanded(child: _AiCard()),
                       ],
                     ),
@@ -438,44 +440,25 @@ class _ActionHalf extends StatelessWidget {
 class _ReportsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return _QuickCard(
+      label: 'Reports',
+      subtitle: 'Monthly',
+      icon: Icons.bar_chart_rounded,
       onTap: () => Get.toNamed(AppRoutes.REPORTS),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: AppColors.dark,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.bar_chart_rounded,
-                  color: AppColors.surface, size: 20),
-            ),
-            const SizedBox(height: 28),
-            const Text(
-              'Reports',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: AppColors.surface,
-              ),
-            ),
-            const SizedBox(height: 2),
-            const Text(
-              'Monthly overview',
-              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-            ),
-          ],
-        ),
-      ),
+    );
+  }
+}
+
+// ── Tasks card ────────────────────────────────────────────────────────────
+
+class _TasksCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return _QuickCard(
+      label: 'Tasks',
+      subtitle: 'To-do list',
+      icon: Icons.checklist_rounded,
+      onTap: () => Get.toNamed(AppRoutes.TODOS),
     );
   }
 }
@@ -485,40 +468,65 @@ class _ReportsCard extends StatelessWidget {
 class _AiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return _QuickCard(
+      label: 'AI Chat',
+      subtitle: 'Ask anything',
+      icon: Icons.auto_awesome_rounded,
       onTap: () => Get.toNamed(AppRoutes.AI_CHAT),
+    );
+  }
+}
+
+// ── Shared quick-action card ──────────────────────────────────────────────
+
+class _QuickCard extends StatelessWidget {
+  final String label;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _QuickCard({
+    required this.label,
+    required this.subtitle,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.primary,
+          color: AppColors.dark,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 38,
-              height: 38,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
-                color: AppColors.dark.withValues(alpha: 0.12),
+                color: Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.auto_awesome_rounded,
-                  color: AppColors.dark, size: 20),
+              child: Icon(icon, color: AppColors.surface, size: 18),
             ),
-            const SizedBox(height: 28),
-            const Text(
-              'AI Chat',
-              style: TextStyle(
-                fontSize: 15,
+            const SizedBox(height: 20),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: AppColors.dark,
+                color: AppColors.surface,
               ),
             ),
             const SizedBox(height: 2),
-            const Text(
-              'Ask anything',
-              style: TextStyle(fontSize: 12, color: AppColors.dark),
+            Text(
+              subtitle,
+              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
             ),
           ],
         ),

@@ -170,11 +170,11 @@ class TodosView extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => ColoredBox(
-        color: AppColors.surface,
-        child: _AddTodoSheet(controller: ctrl),
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      builder: (_) => _AddTodoSheet(controller: ctrl),
     );
   }
 }
@@ -451,6 +451,11 @@ class _AddTodoSheetState extends State<_AddTodoSheet> {
             primary: AppColors.dark,
             onPrimary: AppColors.surface,
             surface: AppColors.surface,
+            secondary: AppColors.dark,
+            onSecondary: AppColors.surface,
+            // AM/PM toggle selected state
+            tertiaryContainer: AppColors.dark,
+            onTertiaryContainer: AppColors.surface,
           ),
         ),
         child: child!,
@@ -501,11 +506,7 @@ class _AddTodoSheetState extends State<_AddTodoSheet> {
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
+        child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,

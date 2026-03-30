@@ -19,6 +19,8 @@ class AssetDetailController extends GetxController {
   // Cache fetched data per range so switching back doesn't re-fetch.
   final Map<String, List<FlSpot>> _cache = {};
   final Map<String, ({double high, double low})> _statsCache = {};
+  // Raw timestamped history per range — used when building AI context.
+  final Map<String, List<({DateTime time, double price})>> _historyCache = {};
 
   static const List<String> ranges = ['1D', '1W', '1M', '3M', '1Y', '5Y', '10Y', 'All'];
 
@@ -33,6 +35,10 @@ class AssetDetailController extends GetxController {
     ever(selectedRange, (_) => _loadHistory());
     _loadHistory();
   }
+
+  /// Returns the timestamped history for the currently selected range.
+  List<({DateTime time, double price})> get currentHistory =>
+      _historyCache[selectedRange.value] ?? [];
 
   bool get chartIsPositive {
     if (spots.length < 2) return true;
@@ -70,6 +76,7 @@ class AssetDetailController extends GetxController {
         final high = prices.reduce(max);
         final low = prices.reduce(min);
         _cache[range] = newSpots;
+        _historyCache[range] = history;
         _statsCache[range] = (high: high, low: low);
         spots.assignAll(newSpots);
         chartHigh.value = high;

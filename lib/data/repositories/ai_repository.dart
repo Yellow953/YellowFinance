@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/constants/app_constants.dart';
-import '../models/ai_message_model.dart';
 import '../providers/firestore_provider.dart';
 
 /// Handles AI chat interactions via Firebase Callable Functions.
@@ -23,23 +22,11 @@ class AiRepository {
     return snap.docs.length;
   }
 
-  /// Saves a conversation record to Firestore (for rate limiting).
-  Future<void> saveConversation(
-      String uid, List<AiMessageModel> messages) async {
+  /// Records an AI call to Firestore for rate limiting purposes.
+  Future<void> recordAiCall(String uid) async {
     await _firestore.aiConversationsCollection(uid).add({
-      'messages': messages.map((m) => m.toMap()).toList(),
       'createdAt': Timestamp.fromDate(DateTime.now()),
     });
-  }
-
-  /// Fetches all conversations for the user.
-  Future<List<Map<String, dynamic>>> fetchConversations(String uid) async {
-    final snap = await _firestore
-        .aiConversationsCollection(uid)
-        .orderBy('createdAt', descending: true)
-        .limit(20)
-        .get();
-    return snap.docs.map((d) => d.data()).toList();
   }
 
   /// Checks if the user is within the daily AI call limit.

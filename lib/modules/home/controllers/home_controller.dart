@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:get/get.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/repositories/transaction_repository.dart';
 import '../../../modules/auth/controllers/auth_controller.dart';
@@ -23,6 +24,14 @@ class HomeController extends GetxController {
   void onInit() {
     super.onInit();
     _subscribeToTransactions();
+    _handlePendingNotification();
+  }
+
+  void _handlePendingNotification() {
+    final route = NotificationService.pendingRoute;
+    if (route == null) return;
+    NotificationService.pendingRoute = null;
+    Future.delayed(Duration.zero, () => Get.toNamed(route));
   }
 
   @override

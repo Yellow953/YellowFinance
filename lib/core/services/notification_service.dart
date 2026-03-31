@@ -18,6 +18,10 @@ abstract class NotificationService {
   static const _channelId = 'task_reminders';
   static const _channelName = 'Task Reminders';
 
+  /// Set when a notification launches a terminated app.
+  /// HomeController consumes this on first load.
+  static String? pendingRoute;
+
   // ── Init ──────────────────────────────────────────────────────────────────
 
   static Future<void> init() async {
@@ -35,9 +39,10 @@ abstract class NotificationService {
     );
 
     // Handle notification tap when the app was fully terminated.
+    // Store as pending — GetX isn't ready yet, HomeController will navigate.
     final launchDetails = await _plugin.getNotificationAppLaunchDetails();
     if (launchDetails?.didNotificationLaunchApp == true) {
-      _navigateToTodos();
+      pendingRoute = AppRoutes.TODOS;
     }
 
     // Request permissions (Android 13+ needs POST_NOTIFICATIONS; 12+ needs

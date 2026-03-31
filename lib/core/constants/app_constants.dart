@@ -31,6 +31,7 @@ abstract class AppConstants {
     'Salary',
     'Project',
     'Business',
+    'Other',
   ];
 
   // Expense categories
@@ -40,6 +41,7 @@ abstract class AppConstants {
     'Misc',
     'Investment',
     'Business',
+    'Other',
   ];
 
   // AI rate limit

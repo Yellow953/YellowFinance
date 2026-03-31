@@ -110,7 +110,7 @@ class AiController extends GetxController {
         timestamp: DateTime.now(),
       ));
 
-      await _aiRepo.saveConversation(uid, messages.toList());
+      await _aiRepo.recordAiCall(uid);
       canSend.value = await _aiRepo.canMakeAiCall(uid);
     } catch (e) {
       debugPrint('AiController._sendWithPayload error: $e');

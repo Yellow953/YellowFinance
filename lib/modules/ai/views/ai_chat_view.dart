@@ -165,7 +165,7 @@ class _AiChatViewState extends State<AiChatView> {
                     ),
                     Obx(() => _InputBar(
                       controller: _inputCtrl,
-                      enabled: controller.canSend.value && !controller.isThinking.value,
+                      enabled: !controller.isThinking.value,
                       onSend: () {
                         final text = _inputCtrl.text;
                         _inputCtrl.clear();

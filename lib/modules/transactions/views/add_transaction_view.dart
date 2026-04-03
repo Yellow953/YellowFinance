@@ -20,7 +20,6 @@ class AddTransactionView extends StatefulWidget {
 class _AddTransactionViewState extends State<AddTransactionView> {
   final _controller = Get.find<TransactionController>();
   final _formKey = GlobalKey<FormState>();
-  final _titleCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
   DateTime _selectedDate = DateTime.now();
@@ -34,7 +33,6 @@ class _AddTransactionViewState extends State<AddTransactionView> {
 
   @override
   void dispose() {
-    _titleCtrl.dispose();
     _amountCtrl.dispose();
     _descCtrl.dispose();
     super.dispose();
@@ -150,23 +148,7 @@ class _AddTransactionViewState extends State<AddTransactionView> {
                             )),
                         const SizedBox(height: 24),
 
-                        // 3 — Title
-                        const _SectionLabel('Title'),
-                        const SizedBox(height: 10),
-                        AppTextField(
-                          label: 'Title',
-                          controller: _titleCtrl,
-                          keyboardType: TextInputType.text,
-                          textCapitalization: TextCapitalization.sentences,
-                          validator: Validators.description,
-                          prefixIcon: const Icon(
-                              Icons.title_rounded,
-                              color: AppColors.textMuted,
-                              size: 20),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // 4 — Amount
+                        // 3 — Amount
                         const _SectionLabel('Amount'),
                         const SizedBox(height: 10),
                         AppTextField(
@@ -205,7 +187,6 @@ class _AddTransactionViewState extends State<AddTransactionView> {
                                 if (_formKey.currentState!.validate()) {
                                   _controller.addTransaction(
                                     amountText: _amountCtrl.text,
-                                    title: _titleCtrl.text.trim(),
                                     description: _descCtrl.text.trim(),
                                     date: _selectedDate,
                                   );

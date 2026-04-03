@@ -5,6 +5,7 @@ import '../modules/auth/bindings/auth_binding.dart';
 import '../modules/auth/views/forgot_password_view.dart';
 import '../modules/auth/views/login_view.dart';
 import '../modules/auth/views/register_view.dart';
+import '../modules/auth/views/splash_view.dart';
 import '../modules/auth/views/verify_email_view.dart';
 import '../modules/profile/views/profile_view.dart';
 import '../modules/home/bindings/home_binding.dart';
@@ -24,6 +25,10 @@ import 'app_routes.dart';
 /// All named routes for GetX navigation.
 abstract class AppPages {
   static final routes = [
+    GetPage(
+      name: AppRoutes.SPLASH,
+      page: () => const SplashView(),
+    ),
     GetPage(
       name: AppRoutes.LOGIN,
       page: () => const LoginView(),

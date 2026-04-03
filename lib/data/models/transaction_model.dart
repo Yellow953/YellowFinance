@@ -9,7 +9,6 @@ class TransactionModel extends Equatable {
   final String type; // 'income' | 'expense'
   final int amount; // cents
   final String category;
-  final String title;
   final String description; // optional, may be empty
   final DateTime date;
   final DateTime createdAt;
@@ -19,7 +18,6 @@ class TransactionModel extends Equatable {
     required this.type,
     required this.amount,
     required this.category,
-    required this.title,
     this.description = '',
     required this.date,
     required this.createdAt,
@@ -35,7 +33,6 @@ class TransactionModel extends Equatable {
       type: data['type'] as String? ?? AppConstants.txnExpense,
       amount: (data['amount'] as num?)?.toInt() ?? 0,
       category: data['category'] as String? ?? '',
-      title: data['title'] as String? ?? '',
       description: data['description'] as String? ?? '',
       date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -46,7 +43,6 @@ class TransactionModel extends Equatable {
         'type': type,
         'amount': amount,
         'category': category,
-        'title': title,
         'description': description,
         'date': Timestamp.fromDate(date),
         'createdAt': Timestamp.fromDate(createdAt),
@@ -54,5 +50,5 @@ class TransactionModel extends Equatable {
 
   @override
   List<Object?> get props =>
-      [id, type, amount, category, title, description, date];
+      [id, type, amount, category, description, date];
 }

@@ -32,7 +32,7 @@ class _HomeViewState extends State<HomeView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.dark,
+      backgroundColor: AppColors.background,
       bottomNavigationBar: AppNavBar(
         currentIndex: 0,
         onTap: (i) {
@@ -248,20 +248,21 @@ class _HomeViewState extends State<HomeView> {
                 delegate: SliverChildBuilderDelegate(
                   (_, i) {
                     final txn = _controller.recentTransactions[i];
-                    return ColoredBox(
-                      color: AppColors.background,
-                      child: Column(
-                        children: [
-                          TransactionTile(
-                            transaction: txn,
-                            hideAmount: _authCtrl.hideBalances.value,
+                    return Obx(() => ColoredBox(
+                          color: AppColors.background,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              TransactionTile(
+                                transaction: txn,
+                                hideAmount: _authCtrl.hideBalances.value,
+                              ),
+                              if (i < _controller.recentTransactions.length - 1)
+                                const Divider(
+                                    height: 1, indent: 72, endIndent: 16),
+                            ],
                           ),
-                          if (i < _controller.recentTransactions.length - 1)
-                            const Divider(
-                                height: 1, indent: 72, endIndent: 16),
-                        ],
-                      ),
-                    );
+                        ));
                   },
                   childCount: _controller.recentTransactions.length,
                 ),
@@ -512,7 +513,7 @@ class _QuickCard extends StatelessWidget {
                 color: Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: AppColors.surface, size: 18),
+              child: Icon(icon, color: AppColors.primary, size: 18),
             ),
             const SizedBox(height: 20),
             Text(

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -63,11 +64,25 @@ Future<void> main() async {
     permanent: true,
   );
 
-  runApp(const YellowFinanceApp());
+  // Determine starting screen from Firebase Auth's cached local state so
+  // Flutter draws the correct screen on its very first frame — no flash.
+  final cachedUser = FirebaseAuth.instance.currentUser;
+  final String initialRoute;
+  if (cachedUser == null) {
+    initialRoute = AppRoutes.LOGIN;
+  } else {
+    final isVerified = cachedUser.emailVerified ||
+        cachedUser.providerData.any((p) => p.providerId == 'google.com');
+    initialRoute = isVerified ? AppRoutes.HOME : AppRoutes.VERIFY_EMAIL;
+  }
+
+  runApp(YellowFinanceApp(initialRoute: initialRoute));
 }
 
 class YellowFinanceApp extends StatelessWidget {
-  const YellowFinanceApp({super.key});
+  final String initialRoute;
+
+  const YellowFinanceApp({super.key, required this.initialRoute});
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +90,7 @@ class YellowFinanceApp extends StatelessWidget {
       title: AppConstants.appName,
       theme: AppTheme.light,
       debugShowCheckedModeBanner: false,
-      initialRoute: AppRoutes.LOGIN,
+      initialRoute: initialRoute,
       getPages: AppPages.routes,
       defaultTransition: Transition.fadeIn,
       builder: (context, child) => _OfflineBannerOverlay(child: child!),

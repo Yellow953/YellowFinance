@@ -6,31 +6,16 @@ import '../../../core/utils/app_snackbar.dart';
 import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 import '../../../data/models/ai_message_model.dart';
-import '../../../data/repositories/ai_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
 
 /// Manages the AI chat session.
 class AiController extends GetxController {
-  final AiRepository _aiRepo;
   final _uuid = const Uuid();
 
   final RxList<AiMessageModel> messages = <AiMessageModel>[].obs;
   final RxBool isThinking = false.obs;
-  final RxBool canSend = true.obs;
 
-  AiController({required AiRepository aiRepo}) : _aiRepo = aiRepo;
-
-  @override
-  void onInit() {
-    super.onInit();
-    _checkRateLimit();
-  }
-
-  Future<void> _checkRateLimit() async {
-    final uid = Get.find<AuthController>().user.value?.uid;
-    if (uid == null) return;
-    canSend.value = await _aiRepo.canMakeAiCall(uid);
-  }
+  AiController();
 
   /// Sends a user message and fetches the AI response via Firebase Function.
   Future<void> sendMessage(String content, {String analysisType = 'general'}) =>
@@ -74,11 +59,6 @@ class AiController extends GetxController {
       AppSnackbar.error('No internet connection.');
       return;
     }
-    if (!canSend.value) {
-      AppSnackbar.show('Limit reached',
-          'You\'ve used all 20 AI calls for today. Try again tomorrow.');
-      return;
-    }
 
     final userMsg = AiMessageModel(
       id: _uuid.v4(),
@@ -86,6 +66,12 @@ class AiController extends GetxController {
       content: content.trim(),
       timestamp: DateTime.now(),
     );
+
+    // Snapshot history BEFORE adding the current message.
+    final history = messages
+        .map((m) => {'role': m.role, 'content': m.content})
+        .toList();
+
     messages.add(userMsg);
     isThinking.value = true;
 
@@ -97,6 +83,7 @@ class AiController extends GetxController {
         'userId': uid,
         'prompt': content.trim(),
         'analysisType': analysisType,
+        'history': history,
         ...extra,
       });
 
@@ -110,8 +97,6 @@ class AiController extends GetxController {
         timestamp: DateTime.now(),
       ));
 
-      await _aiRepo.recordAiCall(uid);
-      canSend.value = await _aiRepo.canMakeAiCall(uid);
     } catch (e) {
       debugPrint('AiController._sendWithPayload error: $e');
       messages.add(AiMessageModel(

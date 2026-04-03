@@ -23,8 +23,15 @@ class HomeController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _subscribeToTransactions();
     _handlePendingNotification();
+    final authCtrl = Get.find<AuthController>();
+    if (authCtrl.user.value != null) {
+      _subscribeToTransactions();
+    } else {
+      ever(authCtrl.user, (user) {
+        if (user != null && _txnSub == null) _subscribeToTransactions();
+      });
+    }
   }
 
   void _handlePendingNotification() {

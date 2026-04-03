@@ -16,9 +16,6 @@ class FirestoreProvider {
   CollectionReference<Map<String, dynamic>> portfolioCollection(String uid) =>
       _db.collection('users').doc(uid).collection('portfolio');
 
-  CollectionReference<Map<String, dynamic>> aiConversationsCollection(String uid) =>
-      _db.collection('users').doc(uid).collection('ai_conversations');
-
   CollectionReference<Map<String, dynamic>> marketPricesCollection() =>
       _db.collection('market_prices');
 

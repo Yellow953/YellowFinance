@@ -187,6 +187,7 @@ class _TransactionsViewState extends State<TransactionsView> {
                       BorderRadius.vertical(top: Radius.circular(28)),
                 ),
                 child: Obx(() {
+                  final hideAmount = _authCtrl.hideBalances.value;
                   if (_controller.isLoading.value) {
                     return const Center(
                       child: CircularProgressIndicator(
@@ -230,7 +231,7 @@ class _TransactionsViewState extends State<TransactionsView> {
                         return _TxnDayGroup(
                           date: group.date,
                           transactions: group.txns,
-                          hideAmount: _authCtrl.hideBalances.value,
+                          hideAmount: hideAmount,
                           onDelete: _controller.deleteTransaction,
                         );
                       },
@@ -406,15 +407,15 @@ class _FilterSheetState extends State<_FilterSheet> {
     final categories = ['All', ...widget.controller.filterCategories];
     final showCalendar = _period == 'Custom';
 
-    return SafeArea(
-      top: false,
-      child: Container(
+    return Container(
       decoration: const BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.of(context).padding.bottom +
+            24,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -582,7 +583,6 @@ class _FilterSheetState extends State<_FilterSheet> {
             ),
           ],
         ),
-      ),
       ),
     );
   }

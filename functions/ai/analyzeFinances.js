@@ -7,8 +7,6 @@ const db = admin.firestore();
 
 const geminiApiKey = defineSecret('GEMINI_API_KEY');
 
-const DAILY_LIMIT = 20;
-
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function categorySummary(transactions) {
@@ -34,11 +32,6 @@ function periodSummary(transactions, label) {
 
 // ── Context builders ───────────────────────────────────────────────────────
 
-// No financial context for general chat — avoids unsolicited analysis.
-function buildGeneralContext() {
-  return null;
-}
-
 async function buildSpendingComparisonContext(userId) {
   const now = new Date();
   const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -63,11 +56,9 @@ async function buildSpendingComparisonContext(userId) {
 }
 
 async function buildMarketAnalysisContext(userId) {
-  // Fetch user portfolio if any (optional context)
   const portfolioSnap = await db.collection('users').doc(userId).collection('portfolio').get();
   const portfolio = portfolioSnap.docs.map(d => d.data());
 
-  // Fetch any stored market prices
   const pricesSnap = await db.collection('market_prices').get();
   const prices = pricesSnap.docs.map(d => ({ symbol: d.id, ...d.data() }));
 
@@ -96,8 +87,7 @@ const SYSTEM_PROMPTS = {
 
 /**
  * Callable function: analyzeFinances
- * Accepts: { userId, prompt, analysisType? }
- * analysisType: 'general' | 'spending_comparison' | 'market_analysis'
+ * Accepts: { userId, prompt, analysisType?, history?, assetContext? }
  * Returns: { response: string }
  */
 exports.analyzeFinances = onCall(
@@ -107,7 +97,7 @@ exports.analyzeFinances = onCall(
       throw new HttpsError('unauthenticated', 'Authentication required.');
     }
 
-    const { userId, prompt, analysisType = 'general', assetContext = null } = request.data;
+    const { userId, prompt, analysisType = 'general', assetContext = null, history = [] } = request.data;
     if (!userId || !prompt) {
       throw new HttpsError('invalid-argument', 'userId and prompt are required.');
     }
@@ -115,18 +105,7 @@ exports.analyzeFinances = onCall(
       throw new HttpsError('permission-denied', 'Access denied.');
     }
 
-    // Rate limit check
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const convSnap = await db
-      .collection('users').doc(userId).collection('ai_conversations')
-      .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(today))
-      .get();
-    if (convSnap.size >= DAILY_LIMIT) {
-      throw new HttpsError('resource-exhausted', 'Daily AI limit reached.');
-    }
-
-    // Build context based on analysis type
+    // Build financial context for the first turn / system instruction.
     let contextStr = null;
     if (analysisType === 'spending_comparison') {
       contextStr = await buildSpendingComparisonContext(userId);
@@ -136,16 +115,27 @@ exports.analyzeFinances = onCall(
       contextStr = assetContext;
     }
 
-    const systemPrompt = SYSTEM_PROMPTS[analysisType] || SYSTEM_PROMPTS.general;
+    const baseSystemPrompt = SYSTEM_PROMPTS[analysisType] || SYSTEM_PROMPTS.general;
+    const systemInstruction = contextStr
+      ? `${baseSystemPrompt}\n\nFinancial context:\n${contextStr}`
+      : baseSystemPrompt;
 
     const { GoogleGenerativeAI } = require('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(geminiApiKey.value());
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      systemInstruction,
+    });
 
-    const fullPrompt = contextStr
-      ? `${systemPrompt}\n\nFinancial context:\n${contextStr}\n\nUser request: ${prompt}`
-      : `${systemPrompt}\n\nUser: ${prompt}`;
-    const result = await model.generateContent(fullPrompt);
+    // Convert Flutter history ({role, content}) to Gemini format.
+    // Flutter uses 'assistant', Gemini expects 'model'.
+    const geminiHistory = history.map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
+
+    const chat = model.startChat({ history: geminiHistory });
+    const result = await chat.sendMessage(prompt);
 
     return { response: result.response.text() };
   }

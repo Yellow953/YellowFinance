@@ -86,7 +86,6 @@ class TransactionRepository {
     required String type,
     required int amount,
     required String category,
-    required String title,
     String description = '',
     required DateTime date,
   }) async {
@@ -96,7 +95,6 @@ class TransactionRepository {
       type: type,
       amount: amount,
       category: category,
-      title: title,
       description: description,
       date: date,
       createdAt: DateTime.now(),

@@ -24,8 +24,6 @@ class TransactionTile extends StatelessWidget {
     final amountPrefix = isIncome ? '+' : '-';
     final icon =
         isIncome ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded;
-    final displayTitle =
-        transaction.title.isNotEmpty ? transaction.title : transaction.category;
 
     return GestureDetector(
       onTap: onTap,
@@ -46,14 +44,14 @@ class TransactionTile extends StatelessWidget {
               child: Icon(icon, color: amountColor, size: 20),
             ),
             const SizedBox(width: 12),
-            // Title + subtitle
+            // Category + date
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    displayTitle,
+                    transaction.category,
                     style: AppTextStyles.bodyMedium
                         .copyWith(fontWeight: FontWeight.w600),
                     maxLines: 1,
@@ -61,7 +59,7 @@ class TransactionTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${transaction.category} · ${Formatters.dateDayMonth(transaction.date)}',
+                    Formatters.dateDayMonth(transaction.date),
                     style: AppTextStyles.bodySmall
                         .copyWith(color: AppColors.textMuted),
                     maxLines: 1,

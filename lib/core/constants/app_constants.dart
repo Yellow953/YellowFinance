@@ -12,7 +12,6 @@ abstract class AppConstants {
   static const String colUsers = 'users';
   static const String colTransactions = 'transactions';
   static const String colPortfolio = 'portfolio';
-  static const String colAiConversations = 'ai_conversations';
   static const String colMarketPrices = 'market_prices';
 
   // Transaction types
@@ -43,9 +42,6 @@ abstract class AppConstants {
     'Business',
     'Other',
   ];
-
-  // AI rate limit
-  static const int aiDailyLimit = 20;
 
   // Inactivity sign-out duration
   static const int inactivityDays = 30;

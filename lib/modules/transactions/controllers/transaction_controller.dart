@@ -198,7 +198,6 @@ class TransactionController extends GetxController {
   /// Saves a new transaction.
   Future<void> addTransaction({
     required String amountText,
-    required String title,
     String description = '',
     required DateTime date,
   }) async {
@@ -216,7 +215,6 @@ class TransactionController extends GetxController {
         type: selectedType.value,
         amount: amountCents,
         category: selectedCategory.value,
-        title: title,
         description: description,
         date: date,
       );

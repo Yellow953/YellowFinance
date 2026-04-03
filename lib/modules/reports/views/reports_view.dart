@@ -151,7 +151,10 @@ class _ReportsViewState extends State<ReportsView> {
                       const SizedBox(height: 12),
                       Obx(() {
                         controller.selectedMonth.value;
-                        return _BarChartCard(controller: controller);
+                        return _BarChartCard(
+                          controller: controller,
+                          hidden: _authCtrl.hideBalances.value,
+                        );
                       }),
                       const SizedBox(height: 32),
                       const Text('Expenses by Category',
@@ -160,7 +163,10 @@ class _ReportsViewState extends State<ReportsView> {
                       Obx(() {
                         controller.selectedMonth.value;
                         controller.touchedPieIndex.value;
-                        return _PieChartCard(controller: controller);
+                        return _PieChartCard(
+                          controller: controller,
+                          hidden: _authCtrl.hideBalances.value,
+                        );
                       }),
                       const SizedBox(height: 24),
                       const Text('Transactions',
@@ -245,7 +251,8 @@ class _InlineStat extends StatelessWidget {
 
 class _BarChartCard extends StatelessWidget {
   final ReportsController controller;
-  const _BarChartCard({required this.controller});
+  final bool hidden;
+  const _BarChartCard({required this.controller, this.hidden = false});
 
   @override
   Widget build(BuildContext context) {
@@ -289,7 +296,7 @@ class _BarChartCard extends StatelessWidget {
                 final cents =
                     rodIndex == 0 ? t.incomeCents : t.expenseCents;
                 return BarTooltipItem(
-                  '$label\n${Formatters.currency(cents)}',
+                  '$label\n${hidden ? '••••' : Formatters.currency(cents)}',
                   const TextStyle(
                     color: AppColors.surface,
                     fontSize: 11,
@@ -395,7 +402,8 @@ class _BarChartCard extends StatelessWidget {
 
 class _PieChartCard extends StatelessWidget {
   final ReportsController controller;
-  const _PieChartCard({required this.controller});
+  final bool hidden;
+  const _PieChartCard({required this.controller, this.hidden = false});
 
   static const List<Color> _pieColors = [
     AppColors.primary,
@@ -435,10 +443,10 @@ class _PieChartCard extends StatelessWidget {
     String centerAmount;
     if (touched >= 0 && touched < entries.length) {
       centerLabel = entries[touched].key;
-      centerAmount = Formatters.currency(entries[touched].value);
+      centerAmount = hidden ? '••••' : Formatters.currency(entries[touched].value);
     } else {
       centerLabel = 'Total';
-      centerAmount = Formatters.currency(total);
+      centerAmount = hidden ? '••••' : Formatters.currency(total);
     }
 
     return Container(
@@ -542,7 +550,7 @@ class _PieChartCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      Formatters.currency(entries[i].value),
+                      hidden ? '••••' : Formatters.currency(entries[i].value),
                       style: AppTextStyles.labelSmall.copyWith(
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,

@@ -51,7 +51,7 @@ class TransactionTile extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    transaction.category,
+                    hideAmount ? '••••••' : transaction.category,
                     style: AppTextStyles.bodyMedium
                         .copyWith(fontWeight: FontWeight.w600),
                     maxLines: 1,
@@ -65,6 +65,16 @@ class TransactionTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (transaction.description.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      hideAmount ? '••••' : transaction.description,
+                      style: AppTextStyles.bodySmall
+                          .copyWith(color: AppColors.textMuted),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ],
               ),
             ),

@@ -171,9 +171,7 @@ lib/
 ### Services Used
 - **Firebase Auth** — Email/password + Google Sign-In
 - **Cloud Firestore** — All user data
-- **Firebase Storage** — Profile photos
 - **Cloud Functions** — AI API calls, market data fetching (keeps API keys server-side)
-- **Firebase App Check** — Prevent API abuse
 
 ### Firestore Schema
 
@@ -201,9 +199,6 @@ users/{uid}/portfolio/{assetId}
   ├── avgBuyPrice: number
   └── createdAt: timestamp
 
-users/{uid}/ai_conversations/{convId}
-  ├── messages: array
-  └── createdAt: timestamp
 ```
 
 ### Firestore Security Rules
@@ -257,7 +252,6 @@ dependencies:
   firebase_core: ^3.0.0
   firebase_auth: ^5.0.0
   cloud_firestore: ^5.0.0
-  firebase_storage: ^12.0.0
   firebase_app_check: ^0.3.0
 
   # State & Navigation

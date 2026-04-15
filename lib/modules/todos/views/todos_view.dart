@@ -7,6 +7,13 @@ import '../../../routes/app_routes.dart';
 import '../../../shared/widgets/nav_bar.dart';
 import '../controllers/todo_controller.dart';
 
+const _kRecurrenceOptions = [
+  (Recurrence.none, 'None'),
+  (Recurrence.daily, 'Daily'),
+  (Recurrence.weekly, 'Weekly'),
+  (Recurrence.monthly, 'Monthly'),
+];
+
 /// Tasks / to-do screen.
 class TodosView extends StatelessWidget {
   const TodosView({super.key});
@@ -222,6 +229,19 @@ class _TodoTile extends StatelessWidget {
     return '${months[todo.dueDate!.month - 1]} ${todo.dueDate!.day}$timeSuffix';
   }
 
+  String _recurrenceLabel(Recurrence r) {
+    switch (r) {
+      case Recurrence.daily:
+        return 'Daily';
+      case Recurrence.weekly:
+        return 'Weekly';
+      case Recurrence.monthly:
+        return 'Monthly';
+      case Recurrence.none:
+        return '';
+    }
+  }
+
   bool get _isOverdue {
     if (todo.dueDate == null || todo.isCompleted) return false;
     final now = DateTime.now();
@@ -341,46 +361,83 @@ class _TodoTile extends StatelessWidget {
                         ),
                       ),
                     ],
-                    if (label != null) ...[
+                    if (label != null || todo.recurrence != Recurrence.none) ...[
                       const SizedBox(height: 5),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: overdue
-                              ? AppColors.danger.withValues(alpha: 0.1)
-                              : label == 'Today'
-                                  ? AppColors.primary.withValues(alpha: 0.15)
-                                  : AppColors.background,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.calendar_today_rounded,
-                              size: 10,
-                              color: overdue
-                                  ? AppColors.danger
-                                  : label == 'Today'
-                                      ? AppColors.dark
-                                      : AppColors.textMuted,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              label,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (label != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
                                 color: overdue
-                                    ? AppColors.danger
+                                    ? AppColors.danger.withValues(alpha: 0.1)
                                     : label == 'Today'
-                                        ? AppColors.dark
-                                        : AppColors.textMuted,
+                                        ? AppColors.primary
+                                            .withValues(alpha: 0.15)
+                                        : AppColors.background,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.calendar_today_rounded,
+                                    size: 10,
+                                    color: overdue
+                                        ? AppColors.danger
+                                        : label == 'Today'
+                                            ? AppColors.dark
+                                            : AppColors.textMuted,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    label,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: overdue
+                                          ? AppColors.danger
+                                          : label == 'Today'
+                                              ? AppColors.dark
+                                              : AppColors.textMuted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (todo.recurrence != Recurrence.none) ...[
+                            if (label != null) const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.repeat_rounded,
+                                    size: 10,
+                                    color: AppColors.textMuted,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _recurrenceLabel(todo.recurrence),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
-                        ),
+                        ],
                       ),
                     ],
                   ],
@@ -392,6 +449,64 @@ class _TodoTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Recurrence picker ──────────────────────────────────────────────────────
+
+class _RecurrencePicker extends StatelessWidget {
+  final Recurrence value;
+  final ValueChanged<Recurrence> onChanged;
+
+  const _RecurrencePicker({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Repeat',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textMuted,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: _kRecurrenceOptions.map((opt) {
+            final (recurrence, label) = opt;
+            final selected = value == recurrence;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: () => onChanged(recurrence),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: selected ? AppColors.primary : AppColors.background,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: selected
+                          ? AppColors.dark
+                          : AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }
@@ -412,6 +527,7 @@ class _AddTodoSheetState extends State<_AddTodoSheet> {
   final _noteCtrl = TextEditingController();
   DateTime? _dueDate;
   TimeOfDay? _dueTime;
+  Recurrence _recurrence = Recurrence.none;
   bool _saving = false;
 
   @override
@@ -479,6 +595,7 @@ class _AddTodoSheetState extends State<_AddTodoSheet> {
       title: _titleCtrl.text,
       note: _noteCtrl.text,
       dueDate: combined,
+      recurrence: combined != null ? _recurrence : Recurrence.none,
     );
     if (mounted) Navigator.pop(context);
   }
@@ -632,6 +749,7 @@ class _AddTodoSheetState extends State<_AddTodoSheet> {
                               onTap: () => setState(() {
                                 _dueDate = null;
                                 _dueTime = null;
+                                _recurrence = Recurrence.none;
                               }),
                               child: Icon(
                                 Icons.close_rounded,
@@ -703,6 +821,15 @@ class _AddTodoSheetState extends State<_AddTodoSheet> {
                   ],
                 ],
               ),
+
+              // Recurrence picker — only when a date is chosen
+              if (_dueDate != null) ...[
+                const SizedBox(height: 12),
+                _RecurrencePicker(
+                  value: _recurrence,
+                  onChanged: (r) => setState(() => _recurrence = r),
+                ),
+              ],
 
               const SizedBox(height: 20),
 

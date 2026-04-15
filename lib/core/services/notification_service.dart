@@ -6,6 +6,21 @@ import 'package:timezone/timezone.dart' as tz;
 import '../../data/models/todo_model.dart';
 import '../../routes/app_routes.dart';
 
+/// Maps a [Recurrence] value to the [DateTimeComponents] that makes
+/// [zonedSchedule] auto-repeat at that cadence. Returns null for one-shot tasks.
+DateTimeComponents? _repeatFor(Recurrence r) {
+  switch (r) {
+    case Recurrence.daily:
+      return DateTimeComponents.time; // same time every day
+    case Recurrence.weekly:
+      return DateTimeComponents.dayOfWeekAndTime; // same day+time every week
+    case Recurrence.monthly:
+      return DateTimeComponents.dayOfMonthAndTime; // same day+time every month
+    case Recurrence.none:
+      return null;
+  }
+}
+
 /// Manages on-device scheduled notifications for due tasks.
 ///
 /// Uses exact alarms so the notification fires at the precise due time,
@@ -70,6 +85,10 @@ abstract class NotificationService {
   // Maps a Firestore document ID (string) to a stable int notification ID.
   static int _idFor(String todoId) => todoId.hashCode.abs() % 2000000000;
 
+  // Separate ID for the 10-minute-early reminder (different hash seed).
+  static int _earlyIdFor(String todoId) =>
+      '${todoId}_early'.hashCode.abs() % 2000000000;
+
   // ── Schedule ──────────────────────────────────────────────────────────────
 
   /// Schedules a notification for [todo] at its due date/time.
@@ -84,34 +103,60 @@ abstract class NotificationService {
     if (due == null) return;
     if (todo.isCompleted) return;
     if (due.hour == 0 && due.minute == 0) return; // date-only, no alarm time
-    if (due.isBefore(DateTime.now())) return;
 
-    final scheduled = tz.TZDateTime.from(due, tz.local);
+    final now = DateTime.now();
 
-    await _plugin.zonedSchedule(
-      id: _idFor(todo.id),
-      title: 'Task due now',
-      body: todo.title,
-      scheduledDate: scheduled,
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channelId,
-          _channelName,
-          channelDescription: 'Reminders for your scheduled tasks',
-          importance: Importance.max,
-          priority: Priority.high,
-          playSound: true,
-          enableVibration: true,
-        ),
+    final repeat = _repeatFor(todo.recurrence);
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        _channelId,
+        _channelName,
+        channelDescription: 'Reminders for your scheduled tasks',
+        importance: Importance.max,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
       ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      payload: todo.id,
     );
+
+    // On-time notification.
+    // For recurring tasks, matchDateTimeComponents tells the OS to auto-repeat
+    // at the chosen cadence — no app involvement needed for future occurrences.
+    if (due.isAfter(now) || repeat != null) {
+      await _plugin.zonedSchedule(
+        id: _idFor(todo.id),
+        title: 'Task due now',
+        body: todo.title,
+        scheduledDate: tz.TZDateTime.from(due, tz.local),
+        notificationDetails: details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: repeat,
+        payload: todo.id,
+      );
+    }
+
+    // 10-minute early reminder (same repeat cadence as the main notification).
+    final early = due.subtract(const Duration(minutes: 10));
+    if (early.isAfter(now) || repeat != null) {
+      await _plugin.zonedSchedule(
+        id: _earlyIdFor(todo.id),
+        title: 'Task due in 10 minutes',
+        body: todo.title,
+        scheduledDate: tz.TZDateTime.from(early, tz.local),
+        notificationDetails: details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: repeat,
+        payload: todo.id,
+      );
+    }
   }
 
-  /// Cancels the pending notification for [todoId] (on complete or delete).
+  /// Cancels both the on-time and early notifications for [todoId].
   static Future<void> cancel(String todoId) async {
-    await _plugin.cancel(id: _idFor(todoId));
+    await Future.wait([
+      _plugin.cancel(id: _idFor(todoId)),
+      _plugin.cancel(id: _earlyIdFor(todoId)),
+    ]);
   }
 
   /// Called once on app start to re-register any notifications that may have

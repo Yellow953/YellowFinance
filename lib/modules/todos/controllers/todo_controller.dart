@@ -6,6 +6,32 @@ import '../../../core/utils/app_snackbar.dart';
 import '../../../data/models/todo_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 
+DateTime _nextOccurrence(DateTime current, Recurrence recurrence) {
+  switch (recurrence) {
+    case Recurrence.daily:
+      return current.add(const Duration(days: 1));
+    case Recurrence.weekly:
+      return current.add(const Duration(days: 7));
+    case Recurrence.monthly:
+      var month = current.month + 1;
+      var year = current.year;
+      if (month > 12) {
+        month = 1;
+        year++;
+      }
+      final lastDay = DateTime(year, month + 1, 0).day;
+      return DateTime(
+        year,
+        month,
+        current.day.clamp(1, lastDay),
+        current.hour,
+        current.minute,
+      );
+    case Recurrence.none:
+      return current;
+  }
+}
+
 /// Manages the todos list and add/edit form state.
 class TodoController extends GetxController {
   final RxList<TodoModel> todos = <TodoModel>[].obs;
@@ -120,6 +146,7 @@ class TodoController extends GetxController {
     required String title,
     String note = '',
     DateTime? dueDate,
+    Recurrence recurrence = Recurrence.none,
   }) async {
     final uid = _uid;
     if (uid == null) return;
@@ -135,6 +162,7 @@ class TodoController extends GetxController {
         dueDate: dueDate,
         isCompleted: false,
         createdAt: DateTime.now(),
+        recurrence: recurrence,
       );
       // Optimistically insert; the stream will confirm once it echoes back.
       todos.insert(0, todo);
@@ -154,7 +182,30 @@ class TodoController extends GetxController {
     if (uid == null) return;
     final idx = todos.indexWhere((t) => t.id == id);
     if (idx == -1) return;
-    final updated = todos[idx].copyWith(isCompleted: !todos[idx].isCompleted);
+    final todo = todos[idx];
+
+    // Recurring task being completed: advance dueDate to the next occurrence
+    // for display purposes. The OS notification is already self-repeating via
+    // matchDateTimeComponents — no cancel/reschedule needed.
+    if (!todo.isCompleted &&
+        todo.recurrence != Recurrence.none &&
+        todo.dueDate != null) {
+      final nextDate = _nextOccurrence(todo.dueDate!, todo.recurrence);
+      final advanced = todo.copyWith(dueDate: nextDate);
+      todos[idx] = advanced;
+      try {
+        await _col(uid)
+            .doc(id)
+            .update({'dueDate': Timestamp.fromDate(nextDate)});
+        AppSnackbar.success('Next occurrence scheduled');
+      } catch (_) {
+        todos[idx] = todo;
+        AppSnackbar.error('Could not update task.');
+      }
+      return;
+    }
+
+    final updated = todo.copyWith(isCompleted: !todo.isCompleted);
     todos[idx] = updated;
     // Cancel the alarm when completing; reschedule if un-completing.
     if (updated.isCompleted) {

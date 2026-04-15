@@ -1,5 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// Recurrence options for a task.
+enum Recurrence { none, daily, weekly, monthly }
+
 /// Represents a single to-do / task item.
 class TodoModel {
   final String id;
@@ -8,6 +11,7 @@ class TodoModel {
   final DateTime? dueDate;
   final bool isCompleted;
   final DateTime createdAt;
+  final Recurrence recurrence;
 
   const TodoModel({
     required this.id,
@@ -16,6 +20,7 @@ class TodoModel {
     required this.dueDate,
     required this.isCompleted,
     required this.createdAt,
+    this.recurrence = Recurrence.none,
   });
 
   factory TodoModel.fromFirestore(DocumentSnapshot doc) {
@@ -29,7 +34,21 @@ class TodoModel {
           : null,
       isCompleted: d['isCompleted'] as bool? ?? false,
       createdAt: (d['createdAt'] as Timestamp).toDate(),
+      recurrence: _parseRecurrence(d['recurrence'] as String?),
     );
+  }
+
+  static Recurrence _parseRecurrence(String? value) {
+    switch (value) {
+      case 'daily':
+        return Recurrence.daily;
+      case 'weekly':
+        return Recurrence.weekly;
+      case 'monthly':
+        return Recurrence.monthly;
+      default:
+        return Recurrence.none;
+    }
   }
 
   Map<String, dynamic> toFirestore() => {
@@ -38,6 +57,7 @@ class TodoModel {
         'dueDate': dueDate != null ? Timestamp.fromDate(dueDate!) : null,
         'isCompleted': isCompleted,
         'createdAt': Timestamp.fromDate(createdAt),
+        'recurrence': recurrence.name,
       };
 
   TodoModel copyWith({
@@ -46,6 +66,7 @@ class TodoModel {
     DateTime? dueDate,
     bool clearDueDate = false,
     bool? isCompleted,
+    Recurrence? recurrence,
   }) =>
       TodoModel(
         id: id,
@@ -54,5 +75,6 @@ class TodoModel {
         dueDate: clearDueDate ? null : (dueDate ?? this.dueDate),
         isCompleted: isCompleted ?? this.isCompleted,
         createdAt: createdAt,
+        recurrence: recurrence ?? this.recurrence,
       );
 }

@@ -13,6 +13,7 @@ abstract class AppConstants {
   static const String colTransactions = 'transactions';
   static const String colPortfolio = 'portfolio';
   static const String colMarketPrices = 'market_prices';
+  static const String colSports = 'sports';
 
   // Transaction types
   static const String txnIncome = 'income';
@@ -40,6 +41,18 @@ abstract class AppConstants {
     'Misc',
     'Investment',
     'Business',
+    'Other',
+  ];
+
+  // Sport categories
+  static const List<String> sportCategories = [
+    'Push Ups',
+    'Pull Ups',
+    'ABS',
+    'Running',
+    'Walking',
+    'Activity',
+    'Gym',
     'Other',
   ];
 

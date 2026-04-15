@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../data/models/sport_record_model.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/repositories/transaction_repository.dart';
 import '../../../modules/auth/controllers/auth_controller.dart';
@@ -10,12 +12,14 @@ class HomeController extends GetxController {
   final TransactionRepository _txnRepo;
 
   final RxList<TransactionModel> transactions = <TransactionModel>[].obs;
+  final RxList<SportRecordModel> sportRecords = <SportRecordModel>[].obs;
   final RxInt totalBalanceCents = 0.obs;
   final RxInt totalIncomeCents = 0.obs;
   final RxInt totalExpenseCents = 0.obs;
   final RxBool isLoading = false.obs;
 
   StreamSubscription<List<TransactionModel>>? _txnSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _sportSub;
 
   HomeController({required TransactionRepository txnRepo})
       : _txnRepo = txnRepo;
@@ -27,9 +31,13 @@ class HomeController extends GetxController {
     final authCtrl = Get.find<AuthController>();
     if (authCtrl.user.value != null) {
       _subscribeToTransactions();
+      _subscribeToSports();
     } else {
       ever(authCtrl.user, (user) {
-        if (user != null && _txnSub == null) _subscribeToTransactions();
+        if (user != null && _txnSub == null) {
+          _subscribeToTransactions();
+          _subscribeToSports();
+        }
       });
     }
   }
@@ -44,6 +52,7 @@ class HomeController extends GetxController {
   @override
   void onClose() {
     _txnSub?.cancel();
+    _sportSub?.cancel();
     super.onClose();
   }
 
@@ -76,6 +85,24 @@ class HomeController extends GetxController {
     totalBalanceCents.value = income - expense;
   }
 
+  void _subscribeToSports() {
+    final uid = Get.find<AuthController>().user.value?.uid;
+    if (uid == null) return;
+    _sportSub = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('sports')
+        .orderBy('date', descending: true)
+        .limit(5)
+        .snapshots()
+        .listen((snap) {
+      sportRecords.assignAll(
+          snap.docs.map(SportRecordModel.fromFirestore));
+    });
+  }
+
   List<TransactionModel> get recentTransactions =>
       transactions.take(5).toList();
+
+  List<SportRecordModel> get recentSportRecords => sportRecords.toList();
 }

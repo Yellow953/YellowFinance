@@ -9,6 +9,7 @@ abstract class AppRoutes {
   static const String TRANSACTIONS = '/transactions';
   static const String ADD_TRANSACTION = '/add-transaction';
   static const String TODOS = '/todos';
+  static const String SPORTS = '/sports';
   static const String PORTFOLIO = '/portfolio';
   static const String ASSET_DETAIL = '/asset-detail';
   static const String REPORTS = '/reports';

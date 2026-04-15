@@ -23,9 +23,9 @@ class _PortfolioViewState extends State<PortfolioView> {
   static const _routes = [
     AppRoutes.HOME,
     AppRoutes.TODOS,
+    AppRoutes.SPORTS,
     AppRoutes.PORTFOLIO,
     AppRoutes.REPORTS,
-    AppRoutes.AI_CHAT,
   ];
 
   @override
@@ -33,9 +33,9 @@ class _PortfolioViewState extends State<PortfolioView> {
     return Scaffold(
       backgroundColor: AppColors.dark,
       bottomNavigationBar: AppNavBar(
-        currentIndex: 2,
+        currentIndex: 3,
         onTap: (i) {
-          if (i != 2) Get.offNamed(_routes[i]);
+          if (i != 3) Get.offNamed(_routes[i]);
         },
       ),
       body: SafeArea(

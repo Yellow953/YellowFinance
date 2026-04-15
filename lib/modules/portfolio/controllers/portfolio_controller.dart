@@ -71,7 +71,11 @@ class PortfolioController extends GetxController {
       (list) async {
         if (list.isEmpty && !seeded) {
           seeded = true;
-          await _seedDefaults(uid);
+          try {
+            await _seedDefaults(uid);
+          } catch (_) {
+            AppSnackbar.error('Could not initialise watchlist.');
+          }
           return; // next snapshot will carry the seeded items
         }
         final enriched = await _enrichWithMarketData(list);
@@ -84,16 +88,16 @@ class PortfolioController extends GetxController {
 
   Future<void> _seedDefaults(String uid) async {
     final now = DateTime.now();
-    for (var i = 0; i < _defaultAssets.length; i++) {
-      final entry = _defaultAssets[i];
-      await _portfolioRepo.addAsset(
-        uid: uid,
-        symbol: entry.symbol,
-        type: entry.type,
-        // Spread createdAt by 1ms so ordering is stable
-        createdAt: now.add(Duration(milliseconds: i)),
-      );
-    }
+    await Future.wait([
+      for (var i = 0; i < _defaultAssets.length; i++)
+        _portfolioRepo.addAsset(
+          uid: uid,
+          symbol: _defaultAssets[i].symbol,
+          type: _defaultAssets[i].type,
+          // Spread createdAt by 1ms so ordering is stable
+          createdAt: now.add(Duration(milliseconds: i)),
+        ),
+    ]);
   }
 
   Future<List<AssetModel>> _enrichWithMarketData(

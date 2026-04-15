@@ -21,9 +21,9 @@ class TodosView extends StatelessWidget {
   static const _routes = [
     AppRoutes.HOME,
     AppRoutes.TODOS,
+    AppRoutes.SPORTS,
     AppRoutes.PORTFOLIO,
     AppRoutes.REPORTS,
-    AppRoutes.AI_CHAT,
   ];
 
   @override

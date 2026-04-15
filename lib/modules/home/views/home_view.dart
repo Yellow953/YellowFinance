@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../data/models/sport_record_model.dart';
 import '../../../routes/app_routes.dart';
 import '../../../shared/widgets/nav_bar.dart';
 import '../../../shared/widgets/transaction_tile.dart';
@@ -24,9 +25,9 @@ class _HomeViewState extends State<HomeView> {
   static const _routes = [
     AppRoutes.HOME,
     AppRoutes.TODOS,
+    AppRoutes.SPORTS,
     AppRoutes.PORTFOLIO,
     AppRoutes.REPORTS,
-    AppRoutes.AI_CHAT,
   ];
 
   @override
@@ -87,7 +88,11 @@ class _HomeViewState extends State<HomeView> {
                           shape: BoxShape.circle,
                           image: photoUrl.isNotEmpty
                               ? DecorationImage(
-                                  image: NetworkImage(photoUrl),
+                                  image: ResizeImage(
+                                    NetworkImage(photoUrl),
+                                    width: 80,
+                                    height: 80,
+                                  ),
                                   fit: BoxFit.cover,
                                 )
                               : null,
@@ -209,6 +214,8 @@ class _HomeViewState extends State<HomeView> {
                         Expanded(child: _AiCard()),
                       ],
                     ),
+                    const SizedBox(height: 12),
+                    _AddSportPill(),
                     const SizedBox(height: 28),
                     _SectionHeader(
                       title: 'Recent Transactions',
@@ -220,10 +227,10 @@ class _HomeViewState extends State<HomeView> {
             ),
 
             // ── Transactions list ────────────────────────────────────────
-            Obx(() {
-              if (_controller.isLoading.value) {
-                return const SliverToBoxAdapter(
-                  child: ColoredBox(
+            SliverToBoxAdapter(
+              child: Obx(() {
+                if (_controller.isLoading.value) {
+                  return const ColoredBox(
                     color: AppColors.background,
                     child: Padding(
                       padding: EdgeInsets.symmetric(vertical: 48),
@@ -232,42 +239,101 @@ class _HomeViewState extends State<HomeView> {
                             color: AppColors.primary),
                       ),
                     ),
-                  ),
-                );
-              }
-              if (_controller.recentTransactions.isEmpty) {
-                return const SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: ColoredBox(
+                  );
+                }
+                if (_controller.recentTransactions.isEmpty) {
+                  return const ColoredBox(
                     color: AppColors.background,
-                    child: _EmptyTransactions(),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 48),
+                      child: _EmptyTransactions(),
+                    ),
+                  );
+                }
+                return ColoredBox(
+                  color: AppColors.background,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Obx(() => Column(
+                            children: [
+                              for (var i = 0;
+                                  i < _controller.recentTransactions.length;
+                                  i++) ...[
+                                TransactionTile(
+                                  transaction:
+                                      _controller.recentTransactions[i],
+                                  hideAmount:
+                                      _authCtrl.hideBalances.value,
+                                ),
+                                if (i <
+                                    _controller.recentTransactions.length - 1)
+                                  const Divider(
+                                      height: 1, indent: 72, endIndent: 16),
+                              ],
+                            ],
+                          )),
+                    ),
                   ),
                 );
-              }
-              return SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (_, i) {
-                    final txn = _controller.recentTransactions[i];
-                    return Obx(() => ColoredBox(
-                          color: AppColors.background,
+              }),
+            ),
+
+            // ── Recent Sports ────────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Obx(() {
+                final sports = _controller.recentSportRecords;
+                if (sports.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                return ColoredBox(
+                  color: AppColors.background,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Divider(height: 1, indent: 16, endIndent: 16),
+                        Padding(
+                          padding:
+                              const EdgeInsets.fromLTRB(16, 20, 16, 12),
+                          child: _SectionHeader(
+                            title: 'Recent Sports',
+                            onSeeAll: () =>
+                                Get.toNamed(AppRoutes.SPORTS),
+                          ),
+                        ),
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.border),
+                          ),
                           child: Column(
-                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              TransactionTile(
-                                transaction: txn,
-                                hideAmount: _authCtrl.hideBalances.value,
-                              ),
-                              if (i < _controller.recentTransactions.length - 1)
-                                const Divider(
-                                    height: 1, indent: 72, endIndent: 16),
+                              for (var i = 0; i < sports.length; i++) ...[
+                                _SportRecordTile(record: sports[i]),
+                                if (i < sports.length - 1)
+                                  const Divider(
+                                      height: 1,
+                                      indent: 16,
+                                      endIndent: 16),
+                              ],
                             ],
                           ),
-                        ));
-                  },
-                  childCount: _controller.recentTransactions.length,
-                ),
-              );
-            }),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ),
 
             // ── Bottom padding ───────────────────────────────────────────
             const SliverToBoxAdapter(
@@ -464,6 +530,53 @@ class _TasksCard extends StatelessWidget {
   }
 }
 
+// ── Add sport pill ─────────────────────────────────────────────────────────
+
+class _AddSportPill extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: GestureDetector(
+        onTap: () =>
+            Get.toNamed(AppRoutes.SPORTS, arguments: 'add'),
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 15, 20, 15),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Icon(Icons.fitness_center_rounded,
+                    color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Add Sport',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ── AI card ───────────────────────────────────────────────────────────────
 
 class _AiCard extends StatelessWidget {
@@ -559,6 +672,70 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+// ── Sport record tile ─────────────────────────────────────────────────────
+
+class _SportRecordTile extends StatelessWidget {
+  final SportRecordModel record;
+  const _SportRecordTile({required this.record});
+
+  static const _months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          // Date
+          SizedBox(
+            width: 44,
+            child: Text(
+              '${_months[record.date.month - 1]} ${record.date.day}',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Category badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              record.category,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppColors.dark,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Description
+          Expanded(
+            child: Text(
+              record.description.isEmpty ? '—' : record.description,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textPrimary,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

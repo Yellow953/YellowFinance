@@ -18,6 +18,13 @@ class TransactionController extends GetxController {
 
   DocumentSnapshot? _lastDoc;
 
+  // Cached computed values
+  final Rx<List<TransactionModel>> _filteredTransactions =
+      Rx<List<TransactionModel>>([]);
+  final Rx<List<({DateTime date, List<TransactionModel> txns})>>
+      _filteredTransactionsByDay =
+      Rx<List<({DateTime date, List<TransactionModel> txns})>>([]);
+
   static const _pageSize = 20;
 
   // Add transaction form state
@@ -44,6 +51,8 @@ class TransactionController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    ever(transactions, (_) => _recomputeFiltered());
+    ever(filterCategory, (_) => _recomputeFiltered());
     _fetchPage(reset: true);
   }
 
@@ -150,25 +159,22 @@ class TransactionController extends GetxController {
     return transactions.map((t) => t.category).toSet().toList()..sort();
   }
 
-  /// Transactions after client-side category filter.
-  List<TransactionModel> get filteredTransactions {
-    if (filterCategory.value == 'All') return transactions.toList();
-    return transactions
-        .where((t) => t.category == filterCategory.value)
-        .toList();
-  }
+  // ── Recompute filter cache ────────────────────────────────────────────────
 
-  /// Filtered transactions grouped by day, newest first.
-  List<({DateTime date, List<TransactionModel> txns})>
-      get filteredTransactionsByDay {
-    final list = filteredTransactions;
+  void _recomputeFiltered() {
+    final cat = filterCategory.value;
+    final filtered = cat == 'All'
+        ? transactions.toList()
+        : transactions.where((t) => t.category == cat).toList();
+    _filteredTransactions.value = filtered;
+
     final grouped = <String, List<TransactionModel>>{};
-    for (final t in list) {
+    for (final t in filtered) {
       final key =
           '${t.date.year}-${t.date.month.toString().padLeft(2, '0')}-${t.date.day.toString().padLeft(2, '0')}';
       (grouped[key] ??= []).add(t);
     }
-    return grouped.entries.map((e) {
+    _filteredTransactionsByDay.value = grouped.entries.map((e) {
       final parts = e.key.split('-');
       return (
         date: DateTime(
@@ -178,6 +184,14 @@ class TransactionController extends GetxController {
     }).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
   }
+
+  /// Transactions after client-side category filter.
+  List<TransactionModel> get filteredTransactions =>
+      _filteredTransactions.value;
+
+  /// Filtered transactions grouped by day, newest first.
+  List<({DateTime date, List<TransactionModel> txns})>
+      get filteredTransactionsByDay => _filteredTransactionsByDay.value;
 
   // ── Form helpers ────────────────────────────────────────────────────────
 

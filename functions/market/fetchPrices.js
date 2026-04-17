@@ -12,7 +12,7 @@ const db = admin.firestore();
  * - Fetches prices from CoinGecko (crypto) or a stocks API
  * - Writes to market_prices/{symbol} collection
  */
-exports.fetchPrices = onSchedule('every 15 minutes', async () => {
+exports.fetchPrices = onSchedule('every 60 minutes', async () => {
   // Collect all unique symbols from all portfolios
   const portfolioSnap = await db.collectionGroup('portfolio').get();
   const symbolMap = {};
@@ -40,15 +40,24 @@ exports.fetchPrices = onSchedule('every 15 minutes', async () => {
         res.on('end', async () => {
           try {
             const prices = JSON.parse(data);
+
+            // Read existing prices once to diff — avoids writing unchanged values.
+            const existingSnap = await db.collection('market_prices').get();
+            const existing = {};
+            existingSnap.docs.forEach(d => { existing[d.id] = d.data().price; });
+
             const batch = db.batch();
+            let writes = 0;
             for (const [id, priceData] of Object.entries(prices)) {
               const symbol = id.toUpperCase();
+              if (existing[symbol] === priceData.usd) continue; // unchanged
               batch.set(db.collection('market_prices').doc(symbol), {
                 price: priceData.usd,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
               });
+              writes++;
             }
-            await batch.commit();
+            if (writes > 0) await batch.commit();
             resolve();
           } catch (e) {
             reject(e);

@@ -105,6 +105,16 @@ exports.analyzeFinances = onCall(
       throw new HttpsError('permission-denied', 'Access denied.');
     }
 
+    // Rate limit: 20 AI calls per user per calendar day.
+    const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const limitRef = db.collection('users').doc(userId).collection('ai_usage').doc(today);
+    const limitSnap = await limitRef.get();
+    const callCount = limitSnap.exists ? (limitSnap.data().count || 0) : 0;
+    if (callCount >= 20) {
+      throw new HttpsError('resource-exhausted', 'Daily AI call limit reached. Try again tomorrow.');
+    }
+    await limitRef.set({ count: callCount + 1 }, { merge: true });
+
     // Build financial context for the first turn / system instruction.
     let contextStr = null;
     if (analysisType === 'spending_comparison') {

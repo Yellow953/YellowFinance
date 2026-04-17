@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../data/models/sport_record_model.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -10,6 +11,7 @@ class SportController extends GetxController {
   final RxList<SportRecordModel> records = <SportRecordModel>[].obs;
   final RxBool isLoading = false.obs;
   final RxBool isSaving = false.obs;
+  final RxBool showAllUsers = false.obs;
 
   /// Month currently displayed. Defaults to current month.
   final Rx<DateTime> selectedMonth =
@@ -34,6 +36,11 @@ class SportController extends GetxController {
     ever(records, (_) => _recompute());
     ever(selectedMonth, (_) => _recompute());
     ever(filterCategory, (_) => _recompute());
+    ever(showAllUsers, (_) {
+      _sub?.cancel();
+      records.clear();
+      _subscribe();
+    });
   }
 
   @override
@@ -44,11 +51,17 @@ class SportController extends GetxController {
 
   String? get _uid => Get.find<AuthController>().user.value?.uid;
 
+  String get _displayName =>
+      Get.find<AuthController>().user.value?.displayName ?? '';
+
   CollectionReference<Map<String, dynamic>> _col(String uid) =>
       FirebaseFirestore.instance
-          .collection('users')
+          .collection(AppConstants.colUsers)
           .doc(uid)
-          .collection('sports');
+          .collection(AppConstants.colSports);
+
+  CollectionReference<Map<String, dynamic>> get _allSportsCol =>
+      FirebaseFirestore.instance.collection(AppConstants.colAllSports);
 
   // ── Stream ────────────────────────────────────────────────────────────────
 
@@ -56,11 +69,12 @@ class SportController extends GetxController {
     final uid = _uid;
     if (uid == null) return;
     isLoading.value = true;
-    _sub = _col(uid)
-        .orderBy('date', descending: true)
-        .limit(200)
-        .snapshots()
-        .listen(
+
+    final Query<Map<String, dynamic>> query = showAllUsers.value
+        ? _allSportsCol.orderBy('date', descending: true).limit(500)
+        : _col(uid).orderBy('date', descending: true).limit(200);
+
+    _sub = query.snapshots().listen(
       (snap) {
         records.assignAll(snap.docs.map(SportRecordModel.fromFirestore));
         isLoading.value = false;
@@ -136,6 +150,16 @@ class SportController extends GetxController {
     return !next.isAfter(DateTime(now.year, now.month));
   }
 
+  // ── Toggle ────────────────────────────────────────────────────────────────
+
+  void toggleAllUsers() => showAllUsers.value = !showAllUsers.value;
+
+  bool isOwnRecord(SportRecordModel record) {
+    final uid = _uid;
+    if (uid == null) return false;
+    return !showAllUsers.value || record.userId == uid;
+  }
+
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
   Future<void> addRecord({
@@ -156,9 +180,19 @@ class SportController extends GetxController {
         category: category,
         description: description.trim(),
         createdAt: DateTime.now(),
+        userId: uid,
+        userName: _displayName,
       );
       records.insert(0, record);
-      await ref.set(record.toFirestore());
+
+      final batch = FirebaseFirestore.instance.batch();
+      batch.set(ref, record.toFirestore());
+      batch.set(
+        _allSportsCol.doc(ref.id),
+        record.toAllSportsFirestore(uid: uid, displayName: _displayName),
+      );
+      await batch.commit();
+
       AppSnackbar.success('Record added');
     } catch (_) {
       AppSnackbar.error('Could not save record.');
@@ -172,7 +206,10 @@ class SportController extends GetxController {
     if (uid == null) return;
     records.removeWhere((r) => r.id == id);
     try {
-      await _col(uid).doc(id).delete();
+      final batch = FirebaseFirestore.instance.batch();
+      batch.delete(_col(uid).doc(id));
+      batch.delete(_allSportsCol.doc(id));
+      await batch.commit();
     } catch (_) {
       AppSnackbar.error('Could not delete record.');
     }

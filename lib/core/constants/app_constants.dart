@@ -14,6 +14,7 @@ abstract class AppConstants {
   static const String colPortfolio = 'portfolio';
   static const String colMarketPrices = 'market_prices';
   static const String colSports = 'sports';
+  static const String colAllSports = 'all_sports';
 
   // Transaction types
   static const String txnIncome = 'income';

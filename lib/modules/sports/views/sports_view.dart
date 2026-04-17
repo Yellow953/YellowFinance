@@ -54,12 +54,14 @@ class _SportsViewState extends State<SportsView> {
           if (i != 2) Get.offNamed(_routes[i]);
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.dark,
-        onPressed: () => _showAddSheet(context, ctrl),
-        child: const Icon(Icons.add_rounded),
-      ),
+      floatingActionButton: Obx(() => ctrl.showAllUsers.value
+          ? const SizedBox.shrink()
+          : FloatingActionButton(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.dark,
+              onPressed: () => _showAddSheet(context, ctrl),
+              child: const Icon(Icons.add_rounded),
+            )),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -137,7 +139,18 @@ class _SportsViewState extends State<SportsView> {
                           )),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
+                  // My / All toggle
+                  Obx(() => Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          _ViewTogglePill(
+                            showAll: ctrl.showAllUsers.value,
+                            onToggle: ctrl.toggleAllUsers,
+                          ),
+                        ],
+                      )),
+                  const SizedBox(height: 10),
                   // Category filter chips
                   Obx(() => SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
@@ -233,6 +246,8 @@ class _SportsViewState extends State<SportsView> {
                       date: groups[i].date,
                       records: groups[i].records,
                       onDelete: ctrl.deleteRecord,
+                      showOwner: ctrl.showAllUsers.value,
+                      canDelete: ctrl.isOwnRecord,
                     ),
                   );
                 }),
@@ -433,12 +448,77 @@ class _SportDayGroup extends StatelessWidget {
   final DateTime date;
   final List<SportRecordModel> records;
   final void Function(String) onDelete;
+  final bool showOwner;
+  final bool Function(SportRecordModel) canDelete;
 
   const _SportDayGroup({
     required this.date,
     required this.records,
     required this.onDelete,
+    required this.showOwner,
+    required this.canDelete,
   });
+
+  Widget _buildTileContent(SportRecordModel record, {Key? key}) {
+    return Padding(
+      key: key,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              record.category,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.dark,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              record.description.isEmpty ? '—' : record.description,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
+            ),
+          ),
+          if (showOwner && record.userName != null) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Text(
+                record.userName!,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textMuted,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
   Future<bool?> _confirmDelete(BuildContext context) => Get.dialog<bool>(
         AlertDialog(
@@ -482,76 +562,39 @@ class _SportDayGroup extends StatelessWidget {
           child: Column(
             children: [
               for (var i = 0; i < records.length; i++) ...[
-                Dismissible(
-                  key: Key(records[i].id),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    alignment: Alignment.centerRight,
-                    decoration: BoxDecoration(
-                      color: AppColors.danger,
-                      borderRadius: BorderRadius.only(
-                        topLeft: i == 0
-                            ? const Radius.circular(12)
-                            : Radius.zero,
-                        topRight: i == 0
-                            ? const Radius.circular(12)
-                            : Radius.zero,
-                        bottomLeft: i == records.length - 1
-                            ? const Radius.circular(12)
-                            : Radius.zero,
-                        bottomRight: i == records.length - 1
-                            ? const Radius.circular(12)
-                            : Radius.zero,
+                if (canDelete(records[i]))
+                  Dismissible(
+                    key: Key(records[i].id),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      alignment: Alignment.centerRight,
+                      decoration: BoxDecoration(
+                        color: AppColors.danger,
+                        borderRadius: BorderRadius.only(
+                          topLeft: i == 0
+                              ? const Radius.circular(12)
+                              : Radius.zero,
+                          topRight: i == 0
+                              ? const Radius.circular(12)
+                              : Radius.zero,
+                          bottomLeft: i == records.length - 1
+                              ? const Radius.circular(12)
+                              : Radius.zero,
+                          bottomRight: i == records.length - 1
+                              ? const Radius.circular(12)
+                              : Radius.zero,
+                        ),
                       ),
+                      padding: const EdgeInsets.only(right: 20),
+                      child: const Icon(Icons.delete_outline_rounded,
+                          color: AppColors.surface),
                     ),
-                    padding: const EdgeInsets.only(right: 20),
-                    child: const Icon(Icons.delete_outline_rounded,
-                        color: AppColors.surface),
-                  ),
-                  confirmDismiss: (_) => _confirmDelete(context),
-                  onDismissed: (_) => onDelete(records[i].id),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
-                    child: Row(
-                      children: [
-                        // Category badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            records[i].category,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.dark,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        // Description
-                        Expanded(
-                          child: Text(
-                            records[i].description.isEmpty
-                                ? '—'
-                                : records[i].description,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textPrimary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                    confirmDismiss: (_) => _confirmDelete(context),
+                    onDismissed: (_) => onDelete(records[i].id),
+                    child: _buildTileContent(records[i]),
+                  )
+                else
+                  _buildTileContent(records[i], key: Key('no-del-${records[i].id}')),
                 if (i < records.length - 1)
                   const Divider(height: 1, indent: 16, endIndent: 16),
               ],
@@ -636,6 +679,50 @@ class _SportCategoryGrid extends StatelessWidget {
             ),
           );
         }).toList(),
+      ),
+    );
+  }
+}
+
+// ── View toggle pill ──────────────────────────────────────────────────────
+
+class _ViewTogglePill extends StatelessWidget {
+  final bool showAll;
+  final VoidCallback onToggle;
+  const _ViewTogglePill({required this.showAll, required this.onToggle});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onToggle,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: showAll
+              ? AppColors.primary
+              : Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              showAll ? Icons.group_rounded : Icons.person_rounded,
+              size: 14,
+              color: showAll ? AppColors.dark : AppColors.textMuted,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              showAll ? 'All Sports' : 'My Sports',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: showAll ? AppColors.dark : AppColors.textMuted,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

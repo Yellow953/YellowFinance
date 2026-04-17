@@ -49,7 +49,14 @@ class TodoController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _subscribe();
+    final authCtrl = Get.find<AuthController>();
+    if (authCtrl.user.value != null) {
+      _subscribe();
+    } else {
+      ever(authCtrl.user, (user) {
+        if (user != null && _sub == null) _subscribe();
+      });
+    }
   }
 
   @override

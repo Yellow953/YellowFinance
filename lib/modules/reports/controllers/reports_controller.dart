@@ -15,6 +15,7 @@ class ReportsController extends GetxController {
   final RxBool isLoading = false.obs;
   final Rx<DateTime> selectedMonth = DateTime.now().obs;
   final RxInt touchedPieIndex = (-1).obs;
+  final Rx<Set<String>> hiddenPieCategories = Rx<Set<String>>(<String>{});
 
   // Cached computed values — updated only when inputs change
   final Rx<List<TransactionModel>> _monthlyTransactions =
@@ -170,9 +171,21 @@ class ReportsController extends GetxController {
 
   // ── Month navigation ──────────────────────────────────────────────────────
 
+  void togglePieCategory(String category) {
+    final next = {...hiddenPieCategories.value};
+    if (next.contains(category)) {
+      next.remove(category);
+    } else {
+      next.add(category);
+    }
+    hiddenPieCategories.value = next;
+    touchedPieIndex.value = -1;
+  }
+
   void setSelectedMonth(DateTime month) {
     selectedMonth.value = month;
     touchedPieIndex.value = -1;
+    hiddenPieCategories.value = <String>{};
   }
 
   void previousMonth() {

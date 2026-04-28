@@ -215,7 +215,13 @@ class _HomeViewState extends State<HomeView> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    _AddSportPill(),
+                    Row(
+                      children: [
+                        Expanded(child: _AddSportPill()),
+                        const SizedBox(width: 8),
+                        Expanded(child: _AddTaskPill()),
+                      ],
+                    ),
                     const SizedBox(height: 28),
                     _SectionHeader(
                       title: 'Recent Transactions',
@@ -563,6 +569,52 @@ class _AddSportPill extends StatelessWidget {
               const SizedBox(width: 12),
               const Text(
                 'Add Sport',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Add task pill ──────────────────────────────────────────────────────────
+
+class _AddTaskPill extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: GestureDetector(
+        onTap: () => Get.toNamed(AppRoutes.TODOS, arguments: 'add'),
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 15, 16, 15),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Icon(Icons.checklist_rounded,
+                    color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Add Task',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,

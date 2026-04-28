@@ -15,8 +15,15 @@ const _kRecurrenceOptions = [
 ];
 
 /// Tasks / to-do screen.
-class TodosView extends StatelessWidget {
+class TodosView extends StatefulWidget {
   const TodosView({super.key});
+
+  @override
+  State<TodosView> createState() => _TodosViewState();
+}
+
+class _TodosViewState extends State<TodosView> {
+  late final TodoController _ctrl;
 
   static const _routes = [
     AppRoutes.HOME,
@@ -27,8 +34,19 @@ class TodosView extends StatelessWidget {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _ctrl = Get.find<TodoController>();
+    if (Get.arguments == 'add') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showAddSheet(context, _ctrl);
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final ctrl = Get.find<TodoController>();
+    final ctrl = _ctrl;
 
     return Scaffold(
       backgroundColor: AppColors.dark,
@@ -161,6 +179,7 @@ class TodosView extends StatelessWidget {
                         todo: items[i],
                         onToggle: () => ctrl.toggleComplete(items[i].id),
                         onDelete: () => ctrl.deleteTodo(items[i].id),
+                        onEdit: () => _showEditSheet(context, items[i]),
                       ),
                     ),
                   );
@@ -184,6 +203,18 @@ class TodosView extends StatelessWidget {
       builder: (_) => _AddTodoSheet(controller: ctrl),
     );
   }
+
+  void _showEditSheet(BuildContext context, TodoModel todo) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _AddTodoSheet(controller: _ctrl, initialTodo: todo),
+    );
+  }
 }
 
 // ── Todo tile ──────────────────────────────────────────────────────────────
@@ -192,11 +223,13 @@ class _TodoTile extends StatelessWidget {
   final TodoModel todo;
   final VoidCallback onToggle;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
 
   const _TodoTile({
     required this.todo,
     required this.onToggle,
     required this.onDelete,
+    required this.onEdit,
   });
 
   String? _dueDateLabel() {
@@ -328,9 +361,12 @@ class _TodoTile extends StatelessWidget {
               ),
             ),
 
-            // Content
+            // Content — tap to edit
             Expanded(
-              child: Padding(
+              child: GestureDetector(
+                onTap: onEdit,
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -443,6 +479,7 @@ class _TodoTile extends StatelessWidget {
                   ],
                 ),
               ),
+              ),
             ),
 
             const SizedBox(width: 16),
@@ -515,20 +552,40 @@ class _RecurrencePicker extends StatelessWidget {
 
 class _AddTodoSheet extends StatefulWidget {
   final TodoController controller;
+  final TodoModel? initialTodo;
 
-  const _AddTodoSheet({required this.controller});
+  const _AddTodoSheet({required this.controller, this.initialTodo});
 
   @override
   State<_AddTodoSheet> createState() => _AddTodoSheetState();
 }
 
 class _AddTodoSheetState extends State<_AddTodoSheet> {
-  final _titleCtrl = TextEditingController();
-  final _noteCtrl = TextEditingController();
+  late final TextEditingController _titleCtrl;
+  late final TextEditingController _noteCtrl;
   DateTime? _dueDate;
   TimeOfDay? _dueTime;
   Recurrence _recurrence = Recurrence.none;
   bool _saving = false;
+
+  bool get _isEditing => widget.initialTodo != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final t = widget.initialTodo;
+    _titleCtrl = TextEditingController(text: t?.title ?? '');
+    _noteCtrl = TextEditingController(text: t?.note ?? '');
+    if (t?.dueDate != null) {
+      _dueDate = DateTime(
+          t!.dueDate!.year, t.dueDate!.month, t.dueDate!.day);
+      if (t.dueDate!.hour != 0 || t.dueDate!.minute != 0) {
+        _dueTime = TimeOfDay(
+            hour: t.dueDate!.hour, minute: t.dueDate!.minute);
+      }
+      _recurrence = t.recurrence;
+    }
+  }
 
   @override
   void dispose() {
@@ -591,12 +648,22 @@ class _AddTodoSheetState extends State<_AddTodoSheet> {
               _dueDate!.year, _dueDate!.month, _dueDate!.day, t.hour, t.minute)
           : DateTime(_dueDate!.year, _dueDate!.month, _dueDate!.day);
     }
-    await widget.controller.addTodo(
-      title: _titleCtrl.text,
-      note: _noteCtrl.text,
-      dueDate: combined,
-      recurrence: combined != null ? _recurrence : Recurrence.none,
-    );
+    if (_isEditing) {
+      await widget.controller.updateTodo(
+        id: widget.initialTodo!.id,
+        title: _titleCtrl.text,
+        note: _noteCtrl.text,
+        dueDate: combined,
+        recurrence: combined != null ? _recurrence : Recurrence.none,
+      );
+    } else {
+      await widget.controller.addTodo(
+        title: _titleCtrl.text,
+        note: _noteCtrl.text,
+        dueDate: combined,
+        recurrence: combined != null ? _recurrence : Recurrence.none,
+      );
+    }
     if (mounted) Navigator.pop(context);
   }
 
@@ -642,9 +709,9 @@ class _AddTodoSheetState extends State<_AddTodoSheet> {
                 ),
               ),
 
-              const Text(
-                'New Task',
-                style: TextStyle(
+              Text(
+                _isEditing ? 'Edit Task' : 'New Task',
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
@@ -857,9 +924,9 @@ class _AddTodoSheetState extends State<_AddTodoSheet> {
                             color: AppColors.surface,
                           ),
                         )
-                      : const Text(
-                          'Add Task',
-                          style: TextStyle(
+                      : Text(
+                          _isEditing ? 'Save Changes' : 'Add Task',
+                          style: const TextStyle(
                               fontSize: 15, fontWeight: FontWeight.w700),
                         ),
                 ),

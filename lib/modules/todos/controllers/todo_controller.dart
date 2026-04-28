@@ -234,6 +234,52 @@ class TodoController extends GetxController {
     }
   }
 
+  Future<void> updateTodo({
+    required String id,
+    required String title,
+    String note = '',
+    DateTime? dueDate,
+    Recurrence recurrence = Recurrence.none,
+  }) async {
+    final uid = _uid;
+    if (uid == null) return;
+    if (title.trim().isEmpty) return;
+    final idx = todos.indexWhere((t) => t.id == id);
+    if (idx == -1) return;
+
+    isSaving.value = true;
+    final original = todos[idx];
+    final updated = original.copyWith(
+      title: title.trim(),
+      note: note.trim(),
+      dueDate: dueDate,
+      recurrence: dueDate != null ? recurrence : Recurrence.none,
+    );
+    todos[idx] = updated;
+
+    if (updated.dueDate != original.dueDate) {
+      await NotificationService.cancel(id);
+      await NotificationService.schedule(updated);
+    }
+
+    try {
+      await _col(uid).doc(id).update({
+        'title': updated.title,
+        'note': updated.note,
+        'dueDate': updated.dueDate != null
+            ? Timestamp.fromDate(updated.dueDate!)
+            : null,
+        'recurrence': updated.recurrence.name,
+      });
+      AppSnackbar.success('Task updated');
+    } catch (_) {
+      todos[idx] = original;
+      AppSnackbar.error('Could not update task.');
+    } finally {
+      isSaving.value = false;
+    }
+  }
+
   Future<void> deleteTodo(String id) async {
     final uid = _uid;
     if (uid == null) return;

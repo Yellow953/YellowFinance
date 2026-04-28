@@ -681,7 +681,6 @@ class _PieChartCard extends StatelessWidget {
       );
     }
 
-    final total = map.values.fold(0, (s, v) => s + v);
     final entries = map.entries.toList();
 
     return Container(
@@ -693,23 +692,34 @@ class _PieChartCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Chart + center label — only rebuilds when touchedPieIndex changes
+          // Chart + center label
           SizedBox(
             height: 220,
             child: Obx(() {
               final touched = controller.touchedPieIndex.value;
+              final hiddenCats = controller.hiddenPieCategories.value;
+
+              final visibleEntries =
+                  entries.where((e) => !hiddenCats.contains(e.key)).toList();
+              final visibleTotal =
+                  visibleEntries.fold(0, (s, e) => s + e.value);
+
               String centerLabel;
               String centerAmount;
-              if (touched >= 0 && touched < entries.length) {
-                centerLabel = entries[touched].key;
+              if (visibleEntries.isEmpty) {
+                centerLabel = 'All hidden';
+                centerAmount = '';
+              } else if (touched >= 0 && touched < visibleEntries.length) {
+                centerLabel = visibleEntries[touched].key;
                 centerAmount = hidden
                     ? '••••'
-                    : Formatters.currency(entries[touched].value);
+                    : Formatters.currency(visibleEntries[touched].value);
               } else {
                 centerLabel = 'Total';
                 centerAmount =
-                    hidden ? '••••' : Formatters.currency(total);
+                    hidden ? '••••' : Formatters.currency(visibleTotal);
               }
+
               return Stack(
                 alignment: Alignment.center,
                 children: [
@@ -730,10 +740,12 @@ class _PieChartCard extends StatelessWidget {
                           }
                         },
                       ),
-                      sections: List.generate(entries.length, (i) {
+                      sections: List.generate(visibleEntries.length, (i) {
+                        final origIdx = entries
+                            .indexWhere((e) => e.key == visibleEntries[i].key);
                         return PieChartSectionData(
-                          value: entries[i].value.toDouble(),
-                          color: _pieColors[i % _pieColors.length],
+                          value: visibleEntries[i].value.toDouble(),
+                          color: _pieColors[origIdx % _pieColors.length],
                           title: '',
                           radius: i == touched ? 58 : 50,
                         );
@@ -753,16 +765,18 @@ class _PieChartCard extends StatelessWidget {
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        centerAmount,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                      if (centerAmount.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          centerAmount,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
-                      ),
+                      ],
                     ],
                   ),
                 ],
@@ -770,59 +784,85 @@ class _PieChartCard extends StatelessWidget {
             }),
           ),
           const SizedBox(height: 16),
-          // Legend — only rebuilds when touchedPieIndex changes
+          // Legend — tap a row to hide/show it
           Obx(() {
             final touched = controller.touchedPieIndex.value;
+            final hiddenCats = controller.hiddenPieCategories.value;
+
+            final visibleEntries =
+                entries.where((e) => !hiddenCats.contains(e.key)).toList();
+            final visibleTotal =
+                visibleEntries.fold(0, (s, e) => s + e.value);
+
             return Column(
               children: List.generate(entries.length, (i) {
-                final pct = entries[i].value / total * 100;
-                final isSelected = i == touched;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          color: _pieColors[i % _pieColors.length],
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          entries[i].key,
-                          style: AppTextStyles.bodySmall.copyWith(
-                            fontWeight: isSelected
-                                ? FontWeight.w600
-                                : FontWeight.w400,
-                            color: isSelected
-                                ? AppColors.textPrimary
-                                : AppColors.textMuted,
+                final entry = entries[i];
+                final isHidden = hiddenCats.contains(entry.key);
+                final visibleIdx =
+                    visibleEntries.indexWhere((e) => e.key == entry.key);
+                final isSelected = !isHidden && visibleIdx == touched;
+                final pct = !isHidden && visibleTotal > 0
+                    ? entry.value / visibleTotal * 100
+                    : 0.0;
+
+                return GestureDetector(
+                  onTap: () => controller.togglePieCategory(entry.key),
+                  child: Opacity(
+                    opacity: isHidden ? 0.35 : 1.0,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: isHidden
+                                  ? AppColors.textMuted
+                                  : _pieColors[i % _pieColors.length],
+                              shape: BoxShape.circle,
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              entry.key,
+                              style: AppTextStyles.bodySmall.copyWith(
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                color: isSelected
+                                    ? AppColors.textPrimary
+                                    : AppColors.textMuted,
+                                decoration: isHidden
+                                    ? TextDecoration.lineThrough
+                                    : TextDecoration.none,
+                                decorationColor: AppColors.textMuted,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            hidden
+                                ? '••••'
+                                : Formatters.currency(entry.value),
+                            style: AppTextStyles.labelSmall.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 36,
+                            child: Text(
+                              isHidden ? '—' : '${pct.toStringAsFixed(0)}%',
+                              style: AppTextStyles.labelSmall
+                                  .copyWith(color: AppColors.textMuted),
+                              textAlign: TextAlign.right,
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        hidden
-                            ? '••••'
-                            : Formatters.currency(entries[i].value),
-                        style: AppTextStyles.labelSmall.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      SizedBox(
-                        width: 36,
-                        child: Text(
-                          '${pct.toStringAsFixed(0)}%',
-                          style: AppTextStyles.labelSmall
-                              .copyWith(color: AppColors.textMuted),
-                          textAlign: TextAlign.right,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 );
               }),

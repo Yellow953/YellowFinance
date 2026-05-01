@@ -35,7 +35,11 @@ class SportController extends GetxController {
   void onInit() {
     super.onInit();
     _subscribe();
-    ever(records, (_) => _recompute());
+    // Streak only depends on own records — skip recomputing it on filter/month changes.
+    ever(records, (_) {
+      _recompute();
+      _computeStreak();
+    });
     ever(selectedMonth, (_) => _recompute());
     ever(filterCategory, (_) => _recompute());
     ever(showAllUsers, (_) {
@@ -118,8 +122,6 @@ class SportController extends GetxController {
       );
     }).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
-
-    _computeStreak();
   }
 
   void _computeStreak() {

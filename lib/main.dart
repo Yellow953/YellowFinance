@@ -38,9 +38,10 @@ Future<void> main() async {
   await NotificationService.init();
 
   // Enable Firestore offline persistence so reads work without internet.
+  // Cap cache at 50 MB to avoid unbounded disk/memory growth.
   FirebaseFirestore.instance.settings = const Settings(
     persistenceEnabled: true,
-    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+    cacheSizeBytes: 50 * 1024 * 1024,
   );
 
   // Register global services

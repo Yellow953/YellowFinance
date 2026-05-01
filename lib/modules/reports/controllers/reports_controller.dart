@@ -83,21 +83,21 @@ class ReportsController extends GetxController {
         .toList();
     _monthlyTransactions.value = monthly;
 
-    // 6-month bar chart totals
+    // 6-month bar chart totals — single pass then lookup
     final now = DateTime.now();
+    final totalsMap = <String, ({int income, int expense})>{};
+    for (final t in transactions) {
+      final key = '${t.date.year}-${t.date.month}';
+      final cur = totalsMap[key] ?? (income: 0, expense: 0);
+      totalsMap[key] = t.isIncome
+          ? (income: cur.income + t.amount, expense: cur.expense)
+          : (income: cur.income, expense: cur.expense + t.amount);
+    }
     _monthlyTotals.value = List.generate(6, (i) {
       final month = DateTime(now.year, now.month - (5 - i));
-      int income = 0, expense = 0;
-      for (final t in transactions) {
-        if (t.date.year == month.year && t.date.month == month.month) {
-          if (t.isIncome) {
-            income += t.amount;
-          } else {
-            expense += t.amount;
-          }
-        }
-      }
-      return (month: month, incomeCents: income, expenseCents: expense);
+      final data =
+          totalsMap['${month.year}-${month.month}'] ?? (income: 0, expense: 0);
+      return (month: month, incomeCents: data.income, expenseCents: data.expense);
     });
 
     // Expense category map

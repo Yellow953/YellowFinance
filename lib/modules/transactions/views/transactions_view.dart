@@ -174,6 +174,13 @@ class _TransactionsViewState extends State<TransactionsView> {
                           fontSize: 13, color: AppColors.textMuted),
                     );
                   }),
+                  const SizedBox(height: 20),
+                  Obx(() => _TxnSummaryRow(
+                        incomeCents: _controller.filteredIncomeCents.value,
+                        expenseCents: _controller.filteredExpenseCents.value,
+                        balanceCents: _controller.filteredBalanceCents.value,
+                        hidden: _authCtrl.hideBalances.value,
+                      )),
                 ],
               ),
             ),
@@ -253,6 +260,100 @@ class _TransactionsViewState extends State<TransactionsView> {
     String fmt(DateTime d) =>
         '${d.day}/${d.month}/${d.year.toString().substring(2)}';
     return '${fmt(s)} – ${fmt(e)}';
+  }
+}
+
+// ── Summary row ───────────────────────────────────────────────────────────
+
+class _TxnSummaryRow extends StatelessWidget {
+  final int incomeCents;
+  final int expenseCents;
+  final int balanceCents;
+  final bool hidden;
+
+  const _TxnSummaryRow({
+    required this.incomeCents,
+    required this.expenseCents,
+    required this.balanceCents,
+    required this.hidden,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _SummaryCell(
+            label: 'Income',
+            amount: incomeCents,
+            color: AppColors.success,
+            hidden: hidden,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _SummaryCell(
+            label: 'Expenses',
+            amount: expenseCents,
+            color: AppColors.danger,
+            hidden: hidden,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _SummaryCell(
+            label: 'Balance',
+            amount: balanceCents,
+            color: balanceCents >= 0 ? AppColors.success : AppColors.danger,
+            hidden: hidden,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SummaryCell extends StatelessWidget {
+  final String label;
+  final int amount;
+  final Color color;
+  final bool hidden;
+
+  const _SummaryCell({
+    required this.label,
+    required this.amount,
+    required this.color,
+    required this.hidden,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            hidden ? '••••' : Formatters.currency(amount.abs()),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: hidden ? AppColors.textMuted : color,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
   }
 }
 

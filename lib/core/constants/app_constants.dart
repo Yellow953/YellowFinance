@@ -32,6 +32,7 @@ abstract class AppConstants {
     'Salary',
     'Project',
     'Business',
+    'Debt',
     'Other',
   ];
 
@@ -42,6 +43,7 @@ abstract class AppConstants {
     'Misc',
     'Investment',
     'Business',
+    'Debt',
     'Other',
   ];
 

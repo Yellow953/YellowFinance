@@ -128,7 +128,7 @@ class _HomeViewState extends State<HomeView> {
                     Row(
                       children: [
                         const Text(
-                          'Total Balance',
+                          'This Month',
                           style: TextStyle(
                               fontSize: 13, color: AppColors.textMuted),
                         ),
@@ -169,20 +169,30 @@ class _HomeViewState extends State<HomeView> {
                     const SizedBox(height: 20),
                     Obx(() => Row(
                           children: [
-                            _StatPill(
-                              label: 'Income',
-                              amount: _controller.totalIncomeCents.value,
-                              color: AppColors.success,
-                              icon: Icons.arrow_upward_rounded,
-                              hidden: _authCtrl.hideBalances.value,
+                            Expanded(
+                              child: _StatPill(
+                                label: 'Income',
+                                amount: _controller.totalIncomeCents.value,
+                                color: AppColors.success,
+                                icon: Icons.arrow_upward_rounded,
+                                hidden: _authCtrl.hideBalances.value,
+                              ),
                             ),
-                            const SizedBox(width: 12),
-                            _StatPill(
-                              label: 'Expenses',
-                              amount: _controller.totalExpenseCents.value,
-                              color: AppColors.danger,
-                              icon: Icons.arrow_downward_rounded,
-                              hidden: _authCtrl.hideBalances.value,
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _StatPill(
+                                label: 'Expenses',
+                                amount: _controller.totalExpenseCents.value,
+                                color: AppColors.danger,
+                                icon: Icons.arrow_downward_rounded,
+                                hidden: _authCtrl.hideBalances.value,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _StreakPill(
+                                days: _controller.sportStreakDays.value,
+                              ),
                             ),
                           ],
                         )),
@@ -374,39 +384,93 @@ class _StatPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 28,
-            height: 28,
+            width: 26,
+            height: 26,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(7),
             ),
-            child: Icon(icon, color: color, size: 14),
+            child: Icon(icon, color: color, size: 13),
           ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label,
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: const TextStyle(
+                        fontSize: 10, color: AppColors.textMuted)),
+                Text(
+                  hidden ? '••••' : Formatters.currency(amount),
                   style: const TextStyle(
-                      fontSize: 11, color: AppColors.textMuted)),
-              Text(
-                hidden ? '••••' : Formatters.currency(amount),
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.surface,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.surface,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Streak pill ────────────────────────────────────────────────────────────
+
+class _StreakPill extends StatelessWidget {
+  final int days;
+
+  const _StreakPill({required this.days});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(7),
+            ),
+            child: const Icon(Icons.local_fire_department_rounded,
+                color: AppColors.primary, size: 13),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Streak',
+                    style: TextStyle(
+                        fontSize: 10, color: AppColors.textMuted)),
+                Text(
+                  days == 0 ? '—' : '$days d',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.surface,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

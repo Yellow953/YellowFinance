@@ -140,14 +140,16 @@ class _SportsViewState extends State<SportsView> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  // My / All toggle
+                  // My / All toggle + streak
                   Obx(() => Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           _ViewTogglePill(
                             showAll: ctrl.showAllUsers.value,
                             onToggle: ctrl.toggleAllUsers,
                           ),
+                          const Spacer(),
+                          if (!ctrl.showAllUsers.value)
+                            _SportStreakBadge(days: ctrl.streakDays.value),
                         ],
                       )),
                   const SizedBox(height: 10),
@@ -679,6 +681,45 @@ class _SportCategoryGrid extends StatelessWidget {
             ),
           );
         }).toList(),
+      ),
+    );
+  }
+}
+
+// ── Streak badge ──────────────────────────────────────────────────────────
+
+class _SportStreakBadge extends StatelessWidget {
+  final int days;
+  const _SportStreakBadge({required this.days});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: days > 0
+            ? AppColors.primary.withValues(alpha: 0.15)
+            : Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.local_fire_department_rounded,
+            size: 14,
+            color: days > 0 ? AppColors.primary : AppColors.textMuted,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            days == 0 ? 'No streak' : '$days day streak',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: days > 0 ? AppColors.primary : AppColors.textMuted,
+            ),
+          ),
+        ],
       ),
     );
   }

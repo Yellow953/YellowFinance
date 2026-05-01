@@ -312,6 +312,7 @@ class _CategoryGrid extends StatelessWidget {
     (label: 'Misc', icon: Icons.grid_view_rounded),
     (label: 'Investment', icon: Icons.trending_up_rounded),
     (label: 'Business', icon: Icons.business_center_rounded),
+    (label: 'Debt', icon: Icons.credit_card_rounded),
     (label: 'Other', icon: Icons.more_horiz_rounded),
   ];
 
@@ -319,6 +320,7 @@ class _CategoryGrid extends StatelessWidget {
     (label: 'Salary', icon: Icons.account_balance_wallet_rounded),
     (label: 'Project', icon: Icons.work_outline_rounded),
     (label: 'Business', icon: Icons.business_center_rounded),
+    (label: 'Debt', icon: Icons.credit_card_rounded),
     (label: 'Other', icon: Icons.more_horiz_rounded),
   ];
 

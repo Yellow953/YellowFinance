@@ -25,6 +25,11 @@ class TransactionController extends GetxController {
       _filteredTransactionsByDay =
       Rx<List<({DateTime date, List<TransactionModel> txns})>>([]);
 
+  // Summary totals for the filtered set
+  final RxInt filteredIncomeCents = 0.obs;
+  final RxInt filteredExpenseCents = 0.obs;
+  final RxInt filteredBalanceCents = 0.obs;
+
   static const _pageSize = 20;
 
   // Add transaction form state
@@ -54,6 +59,7 @@ class TransactionController extends GetxController {
     ever(transactions, (_) => _recomputeFiltered());
     ever(filterCategory, (_) => _recomputeFiltered());
     _fetchPage(reset: true);
+    _fetchTotals();
   }
 
   // ── Date range helpers ──────────────────────────────────────────────────
@@ -140,6 +146,7 @@ class TransactionController extends GetxController {
     filterPeriod.value = period;
     filterCategory.value = 'All';
     _fetchPage(reset: true);
+    _fetchTotals();
   }
 
   void setCustomRange(DateTime start, DateTime end) {
@@ -148,15 +155,51 @@ class TransactionController extends GetxController {
     filterPeriod.value = 'Custom';
     filterCategory.value = 'All';
     _fetchPage(reset: true);
+    _fetchTotals();
   }
 
   void setFilterCategory(String category) {
     filterCategory.value = category;
+    _fetchTotals(category: category);
   }
 
   /// Categories actually present in the currently loaded transactions.
   List<String> get filterCategories {
     return transactions.map((t) => t.category).toSet().toList()..sort();
+  }
+
+  // ── Totals fetch (full dataset, accurate) ───────────────────────────────
+
+  Future<void> _fetchTotals({String? category}) async {
+    final uid = Get.find<AuthController>().user.value?.uid;
+    if (uid == null) return;
+
+    final range = _activeDateRange;
+    try {
+      final all = await _txnRepo.fetchAllForTotals(
+        uid: uid,
+        startDate: range.start,
+        endDate: range.end,
+      );
+
+      final cat = category ?? filterCategory.value;
+      final data = cat == 'All' ? all : all.where((t) => t.category == cat);
+
+      int income = 0;
+      int expense = 0;
+      for (final t in data) {
+        if (t.type == 'income') {
+          income += t.amount;
+        } else {
+          expense += t.amount;
+        }
+      }
+      filteredIncomeCents.value = income;
+      filteredExpenseCents.value = expense;
+      filteredBalanceCents.value = income - expense;
+    } catch (_) {
+      // Silently ignore — totals are best-effort
+    }
   }
 
   // ── Recompute filter cache ────────────────────────────────────────────────

@@ -27,6 +27,8 @@ class SportController extends GetxController {
       _filteredByDay =
       Rx<List<({DateTime date, List<SportRecordModel> records})>>([]);
 
+  final RxInt streakDays = 0.obs;
+
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _sub;
 
   @override
@@ -116,6 +118,48 @@ class SportController extends GetxController {
       );
     }).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
+
+    _computeStreak();
+  }
+
+  void _computeStreak() {
+    final uid = _uid;
+    // Always compute streak from own records only
+    final ownRecords = uid == null
+        ? <SportRecordModel>[]
+        : records.where((r) => !showAllUsers.value || r.userId == uid).toList();
+
+    final dates = ownRecords
+        .map((r) => DateTime(r.date.year, r.date.month, r.date.day))
+        .toSet()
+        .toList()
+      ..sort((a, b) => b.compareTo(a));
+
+    if (dates.isEmpty) {
+      streakDays.value = 0;
+      return;
+    }
+
+    final today = DateTime.now();
+    final todayOnly = DateTime(today.year, today.month, today.day);
+    final yesterdayOnly = todayOnly.subtract(const Duration(days: 1));
+
+    // Streak is only active if exercised today or yesterday
+    if (dates.first != todayOnly && dates.first != yesterdayOnly) {
+      streakDays.value = 0;
+      return;
+    }
+
+    int streak = 1;
+    for (var i = 1; i < dates.length; i++) {
+      final expected = dates[i - 1].subtract(const Duration(days: 1));
+      if (dates[i] == expected) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    streakDays.value = streak;
   }
 
   // ── Public getters reading cached Rx values ───────────────────────────────

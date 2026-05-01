@@ -69,6 +69,45 @@ class TransactionRepository {
     );
   }
 
+  /// Fetches lightweight (type, amount, category) tuples for ALL transactions
+  /// in the date range — no pagination limit. Category filtering is intentionally
+  /// left to the caller to avoid composite-index requirements.
+  Future<List<({String type, int amount, String category})>> fetchAllForTotals({
+    required String uid,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    Query<Map<String, dynamic>> query = _firestore
+        .transactionsCollection(uid)
+        .orderBy('date', descending: true);
+
+    if (startDate != null) {
+      query = query.where(
+        'date',
+        isGreaterThanOrEqualTo: Timestamp.fromDate(startDate),
+      );
+    }
+    if (endDate != null) {
+      query = query.where(
+        'date',
+        isLessThanOrEqualTo: Timestamp.fromDate(endDate),
+      );
+    }
+
+    final snap = await query
+        .get(const GetOptions(source: Source.serverAndCache))
+        .timeout(const Duration(seconds: 10));
+
+    return snap.docs.map((doc) {
+      final d = doc.data();
+      return (
+        type: d['type'] as String? ?? '',
+        amount: (d['amount'] as num?)?.toInt() ?? 0,
+        category: d['category'] as String? ?? '',
+      );
+    }).toList();
+  }
+
   /// Fetches transactions within the last [days] days.
   Future<List<TransactionModel>> fetchRecent(String uid, {int days = 90}) async {
     final since = DateTime.now().subtract(Duration(days: days));

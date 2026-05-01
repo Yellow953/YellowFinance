@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/services/nofap_notification_service.dart';
 import '../../../core/utils/validators.dart';
 import '../../../modules/auth/controllers/auth_controller.dart';
 import '../../../shared/widgets/app_button.dart';
@@ -165,6 +166,8 @@ class _ProfileViewState extends State<ProfileView> {
                             label: 'Email',
                             value: _controller.user.value?.email ?? '—',
                           )),
+                      const SizedBox(height: 32),
+                      const _NofapSection(),
                     ],
                   ),
                 ),
@@ -248,6 +251,210 @@ class _EditNameSectionState extends State<_EditNameSection> {
               )),
         ],
       ),
+    );
+  }
+}
+
+// ── No-Fap reminder section ───────────────────────────────────────────────
+
+class _NofapSection extends StatefulWidget {
+  const _NofapSection();
+
+  @override
+  State<_NofapSection> createState() => _NofapSectionState();
+}
+
+class _NofapSectionState extends State<_NofapSection> {
+  bool _enabled = false;
+  int _hour = 23;
+  int _minute = 30;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final enabled = await NofapNotificationService.isEnabled();
+    final hour = await NofapNotificationService.savedHour();
+    final minute = await NofapNotificationService.savedMinute();
+    if (mounted) setState(() { _enabled = enabled; _hour = hour; _minute = minute; });
+  }
+
+  Future<void> _toggle(bool value) async {
+    if (value) {
+      await NofapNotificationService.enable(hour: _hour, minute: _minute);
+    } else {
+      await NofapNotificationService.disable();
+    }
+    if (mounted) setState(() => _enabled = value);
+    Get.snackbar(
+      value ? 'Reminders On' : 'Reminders Off',
+      value ? 'Daily reminder set for ${_timeLabel()}' : 'No-Fap reminders disabled.',
+      snackPosition: SnackPosition.BOTTOM,
+      margin: const EdgeInsets.all(16),
+      backgroundColor: AppColors.dark,
+      colorText: AppColors.surface,
+      duration: const Duration(seconds: 2),
+    );
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: _hour, minute: _minute),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: Theme.of(ctx).colorScheme.copyWith(
+                primary: AppColors.primary,
+                onPrimary: AppColors.dark,
+                secondary: AppColors.primary,
+                onSecondary: AppColors.dark,
+                // M3 AM/PM selector uses tertiaryContainer for selected bg
+                tertiary: AppColors.primary,
+                onTertiary: AppColors.dark,
+                tertiaryContainer: AppColors.primary,
+                onTertiaryContainer: AppColors.dark,
+                surface: AppColors.surface,
+                onSurface: AppColors.textPrimary,
+              ),
+          textButtonTheme: TextButtonThemeData(
+            style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+          ),
+        ),
+        child: MediaQuery(
+          data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: false),
+          child: child!,
+        ),
+      ),
+    );
+    if (picked == null) return;
+    setState(() { _hour = picked.hour; _minute = picked.minute; });
+    if (_enabled) {
+      await NofapNotificationService.enable(hour: _hour, minute: _minute);
+      Get.snackbar(
+        'Time Updated',
+        'Reminder rescheduled for ${_timeLabel()}',
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+        backgroundColor: AppColors.dark,
+        colorText: AppColors.surface,
+        duration: const Duration(seconds: 2),
+      );
+    }
+  }
+
+  String _timeLabel() {
+    final h = _hour % 12 == 0 ? 12 : _hour % 12;
+    final m = _minute.toString().padLeft(2, '0');
+    final period = _hour < 12 ? 'AM' : 'PM';
+    return '$h:$m $period';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Discipline', style: AppTextStyles.titleMedium),
+        const SizedBox(height: 16),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: AppColors.dark,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Center(
+                        child: Text('🔒', style: TextStyle(fontSize: 18)),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'No-Fap Reminder',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Daily motivational nudge at night',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch.adaptive(
+                      value: _enabled,
+                      onChanged: _toggle,
+                      activeThumbColor: AppColors.primary,
+                      activeTrackColor: AppColors.primary.withValues(alpha: 0.4),
+                    ),
+                  ],
+                ),
+              ),
+              if (_enabled) ...[
+                Divider(height: 1, color: AppColors.border),
+                InkWell(
+                  onTap: _pickTime,
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.access_time_rounded,
+                            size: 18, color: AppColors.textMuted),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Reminder time',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          _timeLabel(),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.chevron_right_rounded,
+                            size: 16, color: AppColors.textMuted),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

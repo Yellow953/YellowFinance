@@ -10,7 +10,8 @@ abstract class NofapNotificationService {
   static const _prefHour = 'nofap_hour';
   static const _prefMinute = 'nofap_minute';
 
-  static const _notifId = 888999; // unique, won't clash with task IDs
+  static const _notifIdBase = 888999; // unique base; reserves 888999–889018
+  static const _scheduleDays = 20; // one-shot notifs scheduled this far ahead
   static const _channelId = 'nofap_reminders';
   static const _channelName = 'No-Fap Reminders';
 
@@ -69,7 +70,7 @@ abstract class NofapNotificationService {
   static Future<void> disable() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_prefEnabled, false);
-    await _plugin.cancel(id: _notifId);
+    await _cancelAll();
   }
 
   static Future<void> rescheduleIfEnabled() async {
@@ -81,39 +82,60 @@ abstract class NofapNotificationService {
 
   // ── Internal scheduler ───────────────────────────────────────────────────
 
+  static Future<void> _cancelAll() async {
+    for (int i = 0; i < _scheduleDays; i++) {
+      await _plugin.cancel(id: _notifIdBase + i);
+    }
+  }
+
+  /// Schedules [_scheduleDays] one-shot notifications, one per day, each with
+  /// a different randomly-shuffled message. Using one-shot instead of
+  /// matchDateTimeComponents means the body changes every day.
+  ///
+  /// Uses [DateTime.now()] (local clock) to build fire times, then converts
+  /// via [tz.TZDateTime.from] so the UTC offset is handled correctly — this
+  /// matches how task notifications are scheduled and fixes the 2-hour drift
+  /// that occurred when building TZDateTime directly from UTC date components.
   static Future<void> _schedule({
     required int hour,
     required int minute,
   }) async {
-    await _plugin.cancel(id: _notifId);
+    await _cancelAll();
 
-    final now = tz.TZDateTime.now(tz.local);
-    var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
-    if (scheduled.isBefore(now)) {
-      scheduled = scheduled.add(const Duration(days: 1));
-    }
+    final shuffled = List.of(_messages)..shuffle(Random());
+    final now = DateTime.now(); // local time — avoids UTC date-component bug
+    int scheduled = 0;
 
-    final body = _messages[Random().nextInt(_messages.length)];
+    for (int day = 0; scheduled < _scheduleDays; day++) {
+      final localDt = DateTime(now.year, now.month, now.day + day, hour, minute);
+      final tzDt = tz.TZDateTime.from(localDt, tz.local);
 
-    await _plugin.zonedSchedule(
-      id: _notifId,
-      title: '🔒 Stay Strong',
-      body: body,
-      scheduledDate: scheduled,
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channelId,
-          _channelName,
-          channelDescription: 'Daily No-Fap motivational reminders',
-          importance: Importance.high,
-          priority: Priority.high,
-          playSound: true,
-          enableVibration: true,
+      // Today's slot may already be in the past if the user just enabled the
+      // feature after the chosen time — skip it, start from tomorrow.
+      if (tzDt.isBefore(tz.TZDateTime.now(tz.local))) continue;
+
+      await _plugin.zonedSchedule(
+        id: _notifIdBase + scheduled,
+        title: '🔒 Stay Strong',
+        body: shuffled[scheduled % shuffled.length],
+        scheduledDate: tzDt,
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            _channelId,
+            _channelName,
+            channelDescription: 'Daily No-Fap motivational reminders',
+            importance: Importance.high,
+            priority: Priority.high,
+            playSound: true,
+            enableVibration: true,
+          ),
+          iOS: DarwinNotificationDetails(),
         ),
-        iOS: DarwinNotificationDetails(),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time, // repeats daily
-    );
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        // No matchDateTimeComponents — each notification is unique and one-shot.
+      );
+
+      scheduled++;
+    }
   }
 }

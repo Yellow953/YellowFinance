@@ -822,6 +822,13 @@ class _AddRecordSheetState extends State<_AddRecordSheet> {
     if (mounted) Navigator.pop(context);
   }
 
+  bool _isYesterday(DateTime d) {
+    final now = DateTime.now();
+    final yesterday =
+        DateTime(now.year, now.month, now.day).subtract(const Duration(days: 1));
+    return DateTime(d.year, d.month, d.day) == yesterday;
+  }
+
   String _formatDate(DateTime d) {
     const months = [
       'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -874,33 +881,44 @@ class _AddRecordSheetState extends State<_AddRecordSheet> {
               const SizedBox(height: 16),
 
               // Date picker
-              GestureDetector(
-                onTap: _pickDate,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.dark,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.calendar_today_rounded,
-                          size: 15, color: AppColors.surface),
-                      const SizedBox(width: 8),
-                      Text(
-                        _formatDate(_date),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.surface,
-                        ),
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: _pickDate,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.dark,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ],
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.calendar_today_rounded,
+                              size: 15, color: AppColors.surface),
+                          const SizedBox(width: 8),
+                          Text(
+                            _formatDate(_date),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.surface,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  _QuickDateButton(
+                    label: 'Yesterday',
+                    selected: _isYesterday(_date),
+                    onTap: () => setState(() => _date =
+                        DateTime.now().subtract(const Duration(days: 1))),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 16),
@@ -972,6 +990,45 @@ class _AddRecordSheetState extends State<_AddRecordSheet> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A compact pill button for quickly selecting a relative date.
+class _QuickDateButton extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _QuickDateButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.dark : AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? AppColors.dark : AppColors.border,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: selected ? AppColors.surface : AppColors.textPrimary,
           ),
         ),
       ),

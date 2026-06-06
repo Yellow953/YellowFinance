@@ -25,7 +25,7 @@ class _SportsViewState extends State<SportsView> {
     AppRoutes.HOME,
     AppRoutes.TODOS,
     AppRoutes.SPORTS,
-    AppRoutes.PORTFOLIO,
+    AppRoutes.TRANSACTIONS,
     AppRoutes.REPORTS,
   ];
 

@@ -23,9 +23,9 @@ class _AiChatViewState extends State<AiChatView> {
   static const _routes = [
     AppRoutes.HOME,
     AppRoutes.TODOS,
-    AppRoutes.PORTFOLIO,
+    AppRoutes.SPORTS,
+    AppRoutes.TRANSACTIONS,
     AppRoutes.REPORTS,
-    AppRoutes.AI_CHAT,
   ];
 
   @override
@@ -71,10 +71,8 @@ class _AiChatViewState extends State<AiChatView> {
     return Scaffold(
       backgroundColor: AppColors.dark,
       bottomNavigationBar: AppNavBar(
-        currentIndex: 4,
-        onTap: (i) {
-          if (i != 4) Get.offNamed(_routes[i]);
-        },
+        currentIndex: -1,
+        onTap: (i) => Get.offNamed(_routes[i]),
       ),
       body: SafeArea(
         child: Column(

@@ -27,7 +27,7 @@ class _TransactionsViewState extends State<TransactionsView> {
     AppRoutes.HOME,
     AppRoutes.TODOS,
     AppRoutes.SPORTS,
-    AppRoutes.PORTFOLIO,
+    AppRoutes.TRANSACTIONS,
     AppRoutes.REPORTS,
   ];
 
@@ -69,8 +69,10 @@ class _TransactionsViewState extends State<TransactionsView> {
     return Scaffold(
       backgroundColor: AppColors.dark,
       bottomNavigationBar: AppNavBar(
-        currentIndex: -1,
-        onTap: (i) => Get.offNamed(_routes[i]),
+        currentIndex: 3,
+        onTap: (i) {
+          if (i != 3) Get.offNamed(_routes[i]);
+        },
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,

@@ -24,7 +24,7 @@ class _PortfolioViewState extends State<PortfolioView> {
     AppRoutes.HOME,
     AppRoutes.TODOS,
     AppRoutes.SPORTS,
-    AppRoutes.PORTFOLIO,
+    AppRoutes.TRANSACTIONS,
     AppRoutes.REPORTS,
   ];
 
@@ -33,10 +33,8 @@ class _PortfolioViewState extends State<PortfolioView> {
     return Scaffold(
       backgroundColor: AppColors.dark,
       bottomNavigationBar: AppNavBar(
-        currentIndex: 3,
-        onTap: (i) {
-          if (i != 3) Get.offNamed(_routes[i]);
-        },
+        currentIndex: -1,
+        onTap: (i) => Get.offNamed(_routes[i]),
       ),
       body: SafeArea(
         bottom: false,

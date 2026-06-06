@@ -33,7 +33,7 @@ class _ReportsViewState extends State<ReportsView> {
     AppRoutes.HOME,
     AppRoutes.TODOS,
     AppRoutes.SPORTS,
-    AppRoutes.PORTFOLIO,
+    AppRoutes.TRANSACTIONS,
     AppRoutes.REPORTS,
   ];
 

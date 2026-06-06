@@ -29,7 +29,7 @@ class _TodosViewState extends State<TodosView> {
     AppRoutes.HOME,
     AppRoutes.TODOS,
     AppRoutes.SPORTS,
-    AppRoutes.PORTFOLIO,
+    AppRoutes.TRANSACTIONS,
     AppRoutes.REPORTS,
   ];
 

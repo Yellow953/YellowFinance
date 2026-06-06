@@ -26,7 +26,7 @@ class _HomeViewState extends State<HomeView> {
     AppRoutes.HOME,
     AppRoutes.TODOS,
     AppRoutes.SPORTS,
-    AppRoutes.PORTFOLIO,
+    AppRoutes.TRANSACTIONS,
     AppRoutes.REPORTS,
   ];
 
@@ -219,7 +219,7 @@ class _HomeViewState extends State<HomeView> {
                       children: [
                         Expanded(child: _ReportsCard()),
                         const SizedBox(width: 8),
-                        Expanded(child: _TasksCard()),
+                        Expanded(child: _StocksCard()),
                         const SizedBox(width: 8),
                         Expanded(child: _AiCard()),
                       ],
@@ -586,16 +586,16 @@ class _ReportsCard extends StatelessWidget {
   }
 }
 
-// ── Tasks card ────────────────────────────────────────────────────────────
+// ── Stocks card ───────────────────────────────────────────────────────────
 
-class _TasksCard extends StatelessWidget {
+class _StocksCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _QuickCard(
-      label: 'Tasks',
-      subtitle: 'To-do list',
-      icon: Icons.checklist_rounded,
-      onTap: () => Get.toNamed(AppRoutes.TODOS),
+      label: 'Stocks',
+      subtitle: 'Portfolio',
+      icon: Icons.candlestick_chart_rounded,
+      onTap: () => Get.toNamed(AppRoutes.PORTFOLIO),
     );
   }
 }

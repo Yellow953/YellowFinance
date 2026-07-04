@@ -43,12 +43,24 @@ class TodoController extends GetxController {
 
   static const filters = ['All', 'Today', 'Upcoming', 'Done'];
 
+  /// View mode: 'list' | 'calendar'
+  final RxString viewMode = 'list'.obs;
+
+  /// Month currently shown in the calendar (normalized to the 1st, midnight).
+  late final Rx<DateTime> focusedMonth;
+
+  /// Day selected in the calendar (normalized to midnight).
+  late final Rx<DateTime> selectedDay;
+
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _sub;
   bool _rescheduled = false;
 
   @override
   void onInit() {
     super.onInit();
+    final now = DateTime.now();
+    focusedMonth = DateTime(now.year, now.month).obs;
+    selectedDay = DateTime(now.year, now.month, now.day).obs;
     final authCtrl = Get.find<AuthController>();
     if (authCtrl.user.value != null) {
       _subscribe();
@@ -143,6 +155,43 @@ class TodoController extends GetxController {
       default: // All — excludes completed tasks (use 'Done' tab to see those)
         return todos.where((t) => !t.isCompleted).toList();
     }
+  }
+
+  // ── Calendar helpers ──────────────────────────────────────────────────────
+
+  /// Tasks with a due date falling on [day], earliest first.
+  List<TodoModel> todosForDay(DateTime day) {
+    final target = DateTime(day.year, day.month, day.day);
+    return todos.where((t) {
+      if (t.dueDate == null) return false;
+      final d = t.dueDate!;
+      return DateTime(d.year, d.month, d.day) == target;
+    }).toList()
+      ..sort((a, b) => a.dueDate!.compareTo(b.dueDate!));
+  }
+
+  /// Whether any task is due on [day] (drives the calendar dot markers).
+  bool hasTasksOn(DateTime day) {
+    final target = DateTime(day.year, day.month, day.day);
+    return todos.any((t) {
+      if (t.dueDate == null) return false;
+      final d = t.dueDate!;
+      return DateTime(d.year, d.month, d.day) == target;
+    });
+  }
+
+  void goToPreviousMonth() {
+    final m = focusedMonth.value;
+    focusedMonth.value = DateTime(m.year, m.month - 1);
+  }
+
+  void goToNextMonth() {
+    final m = focusedMonth.value;
+    focusedMonth.value = DateTime(m.year, m.month + 1);
+  }
+
+  void selectDay(DateTime day) {
+    selectedDay.value = DateTime(day.year, day.month, day.day);
   }
 
   // ── CRUD ──────────────────────────────────────────────────────────────────

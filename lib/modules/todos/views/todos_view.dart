@@ -72,18 +72,29 @@ class _TodosViewState extends State<TodosView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Tasks',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.surface,
-                      letterSpacing: -0.5,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Tasks',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.surface,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      _ViewModeToggle(ctrl: ctrl),
+                    ],
                   ),
-                  const SizedBox(height: 14),
-                  // Filter chips
-                  Obx(() => SingleChildScrollView(
+                  // Filter chips — list mode only
+                  Obx(() {
+                    if (ctrl.viewMode.value != 'list') {
+                      return const SizedBox.shrink();
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 14),
+                      child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: TodoController.filters.map((f) {
@@ -118,7 +129,9 @@ class _TodosViewState extends State<TodosView> {
                             );
                           }).toList(),
                         ),
-                      )),
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),
@@ -136,6 +149,12 @@ class _TodosViewState extends State<TodosView> {
                     return const Center(
                       child: CircularProgressIndicator(
                           color: AppColors.primary),
+                    );
+                  }
+                  if (ctrl.viewMode.value == 'calendar') {
+                    return _CalendarView(
+                      ctrl: ctrl,
+                      onEdit: (todo) => _showEditSheet(context, todo),
                     );
                   }
                   final items = ctrl.filteredTodos;
@@ -484,6 +503,333 @@ class _TodoTile extends StatelessWidget {
 
             const SizedBox(width: 16),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── View-mode toggle ────────────────────────────────────────────────────────
+
+/// Segmented List / Calendar switch shown in the dark header.
+class _ViewModeToggle extends StatelessWidget {
+  final TodoController ctrl;
+
+  const _ViewModeToggle({required this.ctrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final mode = ctrl.viewMode.value;
+      return Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            _segment(
+              icon: Icons.format_list_bulleted_rounded,
+              selected: mode == 'list',
+              onTap: () => ctrl.viewMode.value = 'list',
+            ),
+            _segment(
+              icon: Icons.calendar_month_rounded,
+              selected: mode == 'calendar',
+              onTap: () => ctrl.viewMode.value = 'calendar',
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _segment({
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: selected ? AppColors.dark : AppColors.textMuted,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Calendar view ───────────────────────────────────────────────────────────
+
+const _kWeekdayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const _kMonthNames = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+/// Month grid with per-day task markers, plus the selected day's task list.
+class _CalendarView extends StatelessWidget {
+  final TodoController ctrl;
+  final void Function(TodoModel) onEdit;
+
+  const _CalendarView({required this.ctrl, required this.onEdit});
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final month = ctrl.focusedMonth.value;
+      final selected = ctrl.selectedDay.value;
+      final dayTasks = ctrl.todosForDay(selected);
+
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+        children: [
+          _buildMonthCard(month, selected),
+          const SizedBox(height: 20),
+          _buildSelectedHeader(selected, dayTasks.length),
+          const SizedBox(height: 12),
+          if (dayTasks.isEmpty)
+            _buildEmptyDay()
+          else
+            ...dayTasks.map(
+              (t) => _TodoTile(
+                todo: t,
+                onToggle: () => ctrl.toggleComplete(t.id),
+                onDelete: () => ctrl.deleteTodo(t.id),
+                onEdit: () => onEdit(t),
+              ),
+            ),
+        ],
+      );
+    });
+  }
+
+  Widget _buildMonthCard(DateTime month, DateTime selected) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          // Month header with navigation arrows
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${_kMonthNames[month.month - 1]} ${month.year}',
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                Row(
+                  children: [
+                    _navButton(
+                      Icons.chevron_left_rounded,
+                      ctrl.goToPreviousMonth,
+                    ),
+                    const SizedBox(width: 4),
+                    _navButton(
+                      Icons.chevron_right_rounded,
+                      ctrl.goToNextMonth,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Weekday labels
+          Row(
+            children: _kWeekdayLabels
+                .map((d) => Expanded(
+                      child: Center(
+                        child: Text(
+                          d,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                    ))
+                .toList(),
+          ),
+          const SizedBox(height: 6),
+          _buildDayGrid(month, selected),
+        ],
+      ),
+    );
+  }
+
+  Widget _navButton(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, size: 20, color: AppColors.textPrimary),
+      ),
+    );
+  }
+
+  Widget _buildDayGrid(DateTime month, DateTime selected) {
+    final firstOfMonth = DateTime(month.year, month.month, 1);
+    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
+    // Sunday-first grid: DateTime.weekday is Mon=1..Sun=7 → Sun maps to 0.
+    final leadingBlanks = firstOfMonth.weekday % 7;
+    final totalCells = leadingBlanks + daysInMonth;
+    final rows = (totalCells / 7).ceil();
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    return Column(
+      children: List.generate(rows, (row) {
+        return Row(
+          children: List.generate(7, (col) {
+            final cellIndex = row * 7 + col;
+            final dayNum = cellIndex - leadingBlanks + 1;
+            if (dayNum < 1 || dayNum > daysInMonth) {
+              return const Expanded(child: SizedBox(height: 44));
+            }
+            final date = DateTime(month.year, month.month, dayNum);
+            final isSelected = date == selected;
+            final isToday = date == today;
+            final hasTasks = ctrl.hasTasksOn(date);
+
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => ctrl.selectDay(date),
+                behavior: HitTestBehavior.opaque,
+                child: SizedBox(
+                  height: 44,
+                  child: Center(
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.dark
+                            : isToday
+                                ? AppColors.primary.withValues(alpha: 0.15)
+                                : Colors.transparent,
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '$dayNum',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight:
+                                  isToday || isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w400,
+                              color: isSelected
+                                  ? AppColors.surface
+                                  : AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Container(
+                            width: 4,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: hasTasks
+                                  ? AppColors.primary
+                                  : Colors.transparent,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      }),
+    );
+  }
+
+  Widget _buildSelectedHeader(DateTime selected, int count) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final diff = selected.difference(today).inDays;
+    String label;
+    if (diff == 0) {
+      label = 'Today';
+    } else if (diff == 1) {
+      label = 'Tomorrow';
+    } else if (diff == -1) {
+      label = 'Yesterday';
+    } else {
+      label = '${_kMonthNames[selected.month - 1]} ${selected.day}';
+    }
+
+    return Row(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          count == 1 ? '1 task' : '$count tasks',
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textMuted,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyDay() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 28),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: const Text(
+        'No tasks on this day',
+        style: TextStyle(
+          fontSize: 14,
+          color: AppColors.textMuted,
         ),
       ),
     );

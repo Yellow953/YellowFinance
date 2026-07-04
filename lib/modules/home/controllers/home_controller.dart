@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../core/services/sport_reminder_service.dart';
 import '../../../data/models/sport_record_model.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/repositories/transaction_repository.dart';
@@ -46,8 +47,10 @@ class HomeController extends GetxController {
   void _handlePendingNotification() {
     final route = NotificationService.pendingRoute;
     if (route == null) return;
+    final args = NotificationService.pendingArguments;
     NotificationService.pendingRoute = null;
-    Future.delayed(Duration.zero, () => Get.toNamed(route));
+    NotificationService.pendingArguments = null;
+    Future.delayed(Duration.zero, () => Get.toNamed(route, arguments: args));
   }
 
   @override
@@ -113,17 +116,21 @@ class HomeController extends GetxController {
         .toList()
       ..sort((a, b) => b.compareTo(a));
 
-    if (dates.isEmpty) {
-      sportStreakDays.value = 0;
-      return;
-    }
-
     final today = DateTime.now();
     final todayOnly = DateTime(today.year, today.month, today.day);
     final yesterdayOnly = todayOnly.subtract(const Duration(days: 1));
 
+    _sportLoggedToday = dates.contains(todayOnly);
+
+    if (dates.isEmpty) {
+      sportStreakDays.value = 0;
+      _syncSportReminder();
+      return;
+    }
+
     if (dates.first != todayOnly && dates.first != yesterdayOnly) {
       sportStreakDays.value = 0;
+      _syncSportReminder();
       return;
     }
 
@@ -137,6 +144,19 @@ class HomeController extends GetxController {
       }
     }
     sportStreakDays.value = streak;
+    _syncSportReminder();
+  }
+
+  /// Whether the user has logged a sport entry for today.
+  bool get sportLoggedToday => _sportLoggedToday;
+  bool _sportLoggedToday = false;
+
+  /// Keeps the sport streak reminder in sync with the live streak state.
+  void _syncSportReminder() {
+    SportReminderService.sync(
+      hasStreak: sportStreakDays.value > 0,
+      loggedToday: _sportLoggedToday,
+    );
   }
 
   List<TransactionModel> get recentTransactions =>

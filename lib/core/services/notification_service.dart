@@ -33,9 +33,17 @@ abstract class NotificationService {
   static const _channelId = 'task_reminders';
   static const _channelName = 'Task Reminders';
 
+  /// Payload marking a notification that should open the Sports page's add
+  /// sheet when tapped (used by [SportReminderService]).
+  static const sportsPayload = 'sports';
+
   /// Set when a notification launches a terminated app.
   /// HomeController consumes this on first load.
   static String? pendingRoute;
+
+  /// Route arguments to pass alongside [pendingRoute] (e.g. 'add' to open a
+  /// page's add sheet). Consumed together with [pendingRoute].
+  static Object? pendingArguments;
 
   // ── Init ──────────────────────────────────────────────────────────────────
 
@@ -57,7 +65,13 @@ abstract class NotificationService {
     // Store as pending — GetX isn't ready yet, HomeController will navigate.
     final launchDetails = await _plugin.getNotificationAppLaunchDetails();
     if (launchDetails?.didNotificationLaunchApp == true) {
-      pendingRoute = AppRoutes.TODOS;
+      final payload = launchDetails?.notificationResponse?.payload;
+      if (payload == sportsPayload) {
+        pendingRoute = AppRoutes.SPORTS;
+        pendingArguments = 'add';
+      } else {
+        pendingRoute = AppRoutes.TODOS;
+      }
     }
 
     // Request permissions (Android 13+ needs POST_NOTIFICATIONS; 12+ needs
@@ -73,11 +87,14 @@ abstract class NotificationService {
 
   // ── Notification tap ──────────────────────────────────────────────────────
 
-  static void _onTap(NotificationResponse response) => _navigateToTodos();
-
-  static void _navigateToTodos() {
+  static void _onTap(NotificationResponse response) {
     // Use offAllNamed so the back-stack doesn't accumulate.
-    Future.delayed(Duration.zero, () => Get.offAllNamed(AppRoutes.TODOS));
+    if (response.payload == sportsPayload) {
+      Future.delayed(Duration.zero,
+          () => Get.offAllNamed(AppRoutes.SPORTS, arguments: 'add'));
+    } else {
+      Future.delayed(Duration.zero, () => Get.offAllNamed(AppRoutes.TODOS));
+    }
   }
 
   // ── ID mapping ────────────────────────────────────────────────────────────

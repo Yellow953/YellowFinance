@@ -3,8 +3,10 @@ import 'package:get/get.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/services/nofap_notification_service.dart';
+import '../../../core/services/sport_reminder_service.dart';
 import '../../../core/utils/validators.dart';
 import '../../../modules/auth/controllers/auth_controller.dart';
+import '../../../modules/home/controllers/home_controller.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_text_field.dart';
 
@@ -167,6 +169,8 @@ class _ProfileViewState extends State<ProfileView> {
                             value: _controller.user.value?.email ?? '—',
                           )),
                       const SizedBox(height: 32),
+                      const _SportReminderSection(),
+                      const SizedBox(height: 32),
                       const _NofapSection(),
                     ],
                   ),
@@ -251,6 +255,233 @@ class _EditNameSectionState extends State<_EditNameSection> {
               )),
         ],
       ),
+    );
+  }
+}
+
+// ── Sport streak reminder section ─────────────────────────────────────────
+
+class _SportReminderSection extends StatefulWidget {
+  const _SportReminderSection();
+
+  @override
+  State<_SportReminderSection> createState() => _SportReminderSectionState();
+}
+
+class _SportReminderSectionState extends State<_SportReminderSection> {
+  bool _enabled = false;
+  int _hour = 23;
+  int _minute = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final enabled = await SportReminderService.isEnabled();
+    final hour = await SportReminderService.savedHour();
+    final minute = await SportReminderService.savedMinute();
+    if (mounted) {
+      setState(() {
+        _enabled = enabled;
+        _hour = hour;
+        _minute = minute;
+      });
+    }
+  }
+
+  /// Reads the current streak state from HomeController (kept alive underneath
+  /// the profile route) so the reminder schedules immediately and correctly.
+  Future<void> _resync() async {
+    final home =
+        Get.isRegistered<HomeController>() ? Get.find<HomeController>() : null;
+    await SportReminderService.sync(
+      hasStreak: (home?.sportStreakDays.value ?? 0) > 0,
+      loggedToday: home?.sportLoggedToday ?? false,
+    );
+  }
+
+  Future<void> _toggle(bool value) async {
+    await SportReminderService.setEnabled(value);
+    await _resync();
+    if (mounted) setState(() => _enabled = value);
+    Get.snackbar(
+      value ? 'Reminders On' : 'Reminders Off',
+      value
+          ? 'You\'ll be nudged at ${_timeLabel()} if your streak is at risk.'
+          : 'Sport streak reminders disabled.',
+      snackPosition: SnackPosition.BOTTOM,
+      margin: const EdgeInsets.all(16),
+      backgroundColor: AppColors.dark,
+      colorText: AppColors.surface,
+      duration: const Duration(seconds: 2),
+    );
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: _hour, minute: _minute),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: Theme.of(ctx).colorScheme.copyWith(
+                primary: AppColors.primary,
+                onPrimary: AppColors.dark,
+                secondary: AppColors.primary,
+                onSecondary: AppColors.dark,
+                tertiary: AppColors.primary,
+                onTertiary: AppColors.dark,
+                tertiaryContainer: AppColors.primary,
+                onTertiaryContainer: AppColors.dark,
+                surface: AppColors.surface,
+                onSurface: AppColors.textPrimary,
+              ),
+          textButtonTheme: TextButtonThemeData(
+            style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+          ),
+        ),
+        child: MediaQuery(
+          data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: false),
+          child: child!,
+        ),
+      ),
+    );
+    if (picked == null) return;
+    setState(() {
+      _hour = picked.hour;
+      _minute = picked.minute;
+    });
+    await SportReminderService.setTime(hour: _hour, minute: _minute);
+    if (_enabled) {
+      await _resync();
+      Get.snackbar(
+        'Time Updated',
+        'Reminder rescheduled for ${_timeLabel()}',
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+        backgroundColor: AppColors.dark,
+        colorText: AppColors.surface,
+        duration: const Duration(seconds: 2),
+      );
+    }
+  }
+
+  String _timeLabel() {
+    final h = _hour % 12 == 0 ? 12 : _hour % 12;
+    final m = _minute.toString().padLeft(2, '0');
+    final period = _hour < 12 ? 'AM' : 'PM';
+    return '$h:$m $period';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Streak', style: AppTextStyles.titleMedium),
+        const SizedBox(height: 16),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: AppColors.dark,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Center(
+                        child: Text('🏃', style: TextStyle(fontSize: 18)),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Sport Streak Reminder',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Nudge to log your entry when your streak is at risk',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch.adaptive(
+                      value: _enabled,
+                      onChanged: _toggle,
+                      activeThumbColor: AppColors.primary,
+                      activeTrackColor:
+                          AppColors.primary.withValues(alpha: 0.4),
+                    ),
+                  ],
+                ),
+              ),
+              if (_enabled) ...[
+                Divider(height: 1, color: AppColors.border),
+                InkWell(
+                  onTap: _pickTime,
+                  borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(16)),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.access_time_rounded,
+                            size: 18, color: AppColors.textMuted),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Reminder time',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          _timeLabel(),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.chevron_right_rounded,
+                            size: 16, color: AppColors.textMuted),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

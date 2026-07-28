@@ -38,6 +38,8 @@ class TransactionController extends GetxController {
 
   // Filter state
   static const filterPeriods = [
+    'Today',
+    'Yesterday',
     'This Month',
     'Last Month',
     '3 Months',
@@ -64,9 +66,21 @@ class TransactionController extends GetxController {
 
   // ── Date range helpers ──────────────────────────────────────────────────
 
+  /// Midnight at the beginning of [d].
+  static DateTime _startOfDay(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  /// Last instant of [d] — used so day-bounded queries are inclusive.
+  static DateTime _endOfDay(DateTime d) =>
+      DateTime(d.year, d.month, d.day, 23, 59, 59, 999);
+
   ({DateTime? start, DateTime? end}) get _activeDateRange {
     final now = DateTime.now();
     switch (filterPeriod.value) {
+      case 'Today':
+        return (start: _startOfDay(now), end: _endOfDay(now));
+      case 'Yesterday':
+        final yesterday = now.subtract(const Duration(days: 1));
+        return (start: _startOfDay(yesterday), end: _endOfDay(yesterday));
       case 'This Month':
         return (start: DateTime(now.year, now.month, 1), end: now);
       case 'Last Month':
@@ -82,7 +96,12 @@ class TransactionController extends GetxController {
       case 'This Year':
         return (start: DateTime(now.year, 1, 1), end: now);
       case 'Custom':
-        return (start: customStart.value, end: customEnd.value);
+        final s = customStart.value;
+        final e = customEnd.value ?? s;
+        return (
+          start: s == null ? null : _startOfDay(s),
+          end: e == null ? null : _endOfDay(e),
+        );
       default: // 'All'
         return (start: null, end: null);
     }
@@ -149,9 +168,11 @@ class TransactionController extends GetxController {
     _fetchTotals();
   }
 
-  void setCustomRange(DateTime start, DateTime end) {
-    customStart.value = start;
-    customEnd.value = end;
+  /// Applies a custom range. Pass [end] as null (or equal to [start]) to filter
+  /// a single day.
+  void setCustomRange(DateTime start, DateTime? end) {
+    customStart.value = _startOfDay(start);
+    customEnd.value = _endOfDay(end ?? start);
     filterPeriod.value = 'Custom';
     filterCategory.value = 'All';
     _fetchPage(reset: true);

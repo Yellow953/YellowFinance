@@ -258,10 +258,12 @@ class _TransactionsViewState extends State<TransactionsView> {
   String _customLabel() {
     final s = _controller.customStart.value;
     final e = _controller.customEnd.value;
-    if (s == null || e == null) return 'Custom';
+    if (s == null) return 'Custom';
     String fmt(DateTime d) =>
         '${d.day}/${d.month}/${d.year.toString().substring(2)}';
-    return '${fmt(s)} – ${fmt(e)}';
+    final sameDay =
+        e == null || (s.year == e.year && s.month == e.month && s.day == e.day);
+    return sameDay ? fmt(s) : '${fmt(s)} – ${fmt(e)}';
   }
 }
 
@@ -489,8 +491,9 @@ class _FilterSheetState extends State<_FilterSheet> {
 
   void _apply() {
     if (_period == 'Custom') {
-      if (_rangeStart != null && _rangeEnd != null) {
-        widget.controller.setCustomRange(_rangeStart!, _rangeEnd!);
+      // A start with no end means a single-day filter.
+      if (_rangeStart != null) {
+        widget.controller.setCustomRange(_rangeStart!, _rangeEnd);
       }
     } else {
       widget.controller.setFilterPeriod(_period);
@@ -593,7 +596,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                         onTap: () => setState(() => _period = p),
                       )),
                   _OptionChip(
-                    label: 'Custom range',
+                    label: 'Pick dates',
                     selected: _period == 'Custom',
                     icon: Icons.calendar_today_rounded,
                     onTap: () => setState(() => _period = 'Custom'),
@@ -660,8 +663,7 @@ class _FilterSheetState extends State<_FilterSheet> {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: (_period == 'Custom' &&
-                          (_rangeStart == null || _rangeEnd == null))
+                  onPressed: (_period == 'Custom' && _rangeStart == null)
                       ? null
                       : _apply,
                   style: ElevatedButton.styleFrom(
@@ -732,7 +734,7 @@ class _InlineCalendarState extends State<_InlineCalendar> {
     if (day.isAfter(DateTime.now())) return;
     setState(() {
       if (_start == null || (_start != null && _end != null)) {
-        // Start fresh
+        // Start fresh — a lone start date means that single day.
         _start = day;
         _end = null;
       } else {
@@ -740,7 +742,8 @@ class _InlineCalendarState extends State<_InlineCalendar> {
         if (day.isBefore(_start!)) {
           _start = day;
         } else if (_isSameDay(day, _start!)) {
-          _start = null;
+          // Second tap on the same day confirms a single-day filter.
+          _end = day;
         } else {
           _end = day;
         }
@@ -892,9 +895,9 @@ class _InlineCalendarState extends State<_InlineCalendar> {
           padding: const EdgeInsets.only(bottom: 4),
           child: Text(
             _start == null
-                ? 'Tap a start date'
+                ? 'Tap a day to filter it'
                 : _end == null
-                    ? 'Tap an end date'
+                    ? 'Tap an end date, or apply for this day only'
                     : '',
             style: const TextStyle(
               fontSize: 12,

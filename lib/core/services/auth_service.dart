@@ -1,5 +1,4 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 /// Thin wrapper around [FirebaseAuth].
@@ -71,9 +70,5 @@ class AuthService {
   /// Updates the display name on the Firebase Auth profile.
   Future<void> updateDisplayName(String name) async {
     await currentUser?.updateDisplayName(name);
-    if (kDebugMode) {
-      // Only log non-sensitive data in debug mode
-      debugPrint('AuthService: display name updated');
-    }
   }
 }

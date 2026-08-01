@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/app_colors.dart';
@@ -174,10 +172,6 @@ class _ProfileViewState extends State<ProfileView> {
                       const _SportReminderSection(),
                       const SizedBox(height: 32),
                       const _NofapSection(),
-                      if (kDebugMode) ...[
-                        const SizedBox(height: 32),
-                        const _OfflineTestSection(),
-                      ],
                     ],
                   ),
                 ),
@@ -690,70 +684,6 @@ class _NofapSectionState extends State<_NofapSection> {
               ],
             ],
           ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Offline test switch (debug builds only) ───────────────────────────────
-
-/// Cuts Firestore's network link so offline mode can be exercised without
-/// touching the device's connection — the iOS Simulator has no airplane mode.
-///
-/// Stripped from release builds by the `kDebugMode` guard at its call site.
-/// Note this leaves `ConnectivityService` reporting "online", so the offline
-/// banner won't appear; what it does prove is the part that matters — that
-/// writes commit locally, queue, and replay on re-enable.
-class _OfflineTestSection extends StatefulWidget {
-  const _OfflineTestSection();
-
-  @override
-  State<_OfflineTestSection> createState() => _OfflineTestSectionState();
-}
-
-class _OfflineTestSectionState extends State<_OfflineTestSection> {
-  bool _networkDisabled = false;
-  bool _busy = false;
-
-  Future<void> _toggle(bool disable) async {
-    setState(() => _busy = true);
-    try {
-      if (disable) {
-        await FirebaseFirestore.instance.disableNetwork();
-      } else {
-        await FirebaseFirestore.instance.enableNetwork();
-      }
-      if (mounted) setState(() => _networkDisabled = disable);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Debug', style: AppTextStyles.titleMedium),
-        const SizedBox(height: 4),
-        Text(
-          'Simulate being offline without changing your connection.',
-          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: Text('Firestore network off',
-                  style: AppTextStyles.bodyMedium),
-            ),
-            Switch(
-              value: _networkDisabled,
-              activeThumbColor: AppColors.primary,
-              onChanged: _busy ? null : _toggle,
-            ),
-          ],
         ),
       ],
     );

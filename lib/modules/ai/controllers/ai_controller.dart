@@ -1,6 +1,5 @@
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import '../../../core/services/connectivity_service.dart';
 import '../../../core/utils/app_snackbar.dart';
 import 'package:get/get.dart';
@@ -96,9 +95,7 @@ class AiController extends GetxController {
         content: responseText,
         timestamp: DateTime.now(),
       ));
-
     } catch (e) {
-      debugPrint('AiController._sendWithPayload error: $e');
       messages.add(AiMessageModel(
         id: _uuid.v4(),
         role: 'assistant',

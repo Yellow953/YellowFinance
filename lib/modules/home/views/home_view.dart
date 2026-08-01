@@ -154,37 +154,37 @@ class _HomeViewState extends State<HomeView> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Obx(() => Text(
-                          _authCtrl.hideBalances.value
-                              ? '••••••'
-                              : Formatters.currency(
-                                  _controller.totalBalanceCents.value),
-                          style: const TextStyle(
-                            fontSize: 38,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.surface,
-                            letterSpacing: -1.5,
-                          ),
+                    Obx(() => Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: _HeroAmount(
+                                label: 'Income',
+                                amount: _controller.totalIncomeCents.value,
+                                color: AppColors.success,
+                                hidden: _authCtrl.hideBalances.value,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _HeroAmount(
+                                label: 'Expenses',
+                                amount: _controller.totalExpenseCents.value,
+                                color: AppColors.danger,
+                                hidden: _authCtrl.hideBalances.value,
+                              ),
+                            ),
+                          ],
                         )),
                     const SizedBox(height: 20),
                     Obx(() => Row(
                           children: [
                             Expanded(
                               child: _StatPill(
-                                label: 'Income',
-                                amount: _controller.totalIncomeCents.value,
-                                color: AppColors.success,
-                                icon: Icons.arrow_upward_rounded,
-                                hidden: _authCtrl.hideBalances.value,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _StatPill(
-                                label: 'Expenses',
-                                amount: _controller.totalExpenseCents.value,
-                                color: AppColors.danger,
-                                icon: Icons.arrow_downward_rounded,
+                                label: 'Balance',
+                                amount: _controller.totalBalanceCents.value,
+                                color: AppColors.primary,
+                                icon: Icons.account_balance_wallet_outlined,
                                 hidden: _authCtrl.hideBalances.value,
                               ),
                             ),
@@ -365,6 +365,61 @@ class _HomeViewState extends State<HomeView> {
 }
 
 // ── Stat pill ──────────────────────────────────────────────────────────────
+
+/// Large hero figure in the dark header (income / expenses).
+class _HeroAmount extends StatelessWidget {
+  final String label;
+  final int amount;
+  final Color color;
+  final bool hidden;
+
+  const _HeroAmount({
+    required this.label,
+    required this.amount,
+    required this.color,
+    this.hidden = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            hidden ? '••••••' : Formatters.currency(amount),
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              color: AppColors.surface,
+              letterSpacing: -1,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class _StatPill extends StatelessWidget {
   final String label;

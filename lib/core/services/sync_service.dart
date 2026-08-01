@@ -88,7 +88,6 @@ class SyncService extends GetxService {
       },
       onError: (Object e) {
         if (isDelete) _pendingDeletes.value--;
-        if (kDebugMode) debugPrint('Sync failed [$label]: $e');
         AppSnackbar.error('Could not sync $label.');
         onError?.call();
       },

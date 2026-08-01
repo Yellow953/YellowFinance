@@ -5,6 +5,7 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../../data/models/todo_model.dart';
 import '../../../routes/app_routes.dart';
 import '../../../shared/widgets/nav_bar.dart';
+import '../../../shared/widgets/sync_dot.dart';
 import '../controllers/todo_controller.dart';
 
 const _kRecurrenceOptions = [
@@ -390,19 +391,29 @@ class _TodoTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      todo.title,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: todo.isCompleted
-                            ? AppColors.textMuted
-                            : AppColors.textPrimary,
-                        decoration: todo.isCompleted
-                            ? TextDecoration.lineThrough
-                            : null,
-                        decorationColor: AppColors.textMuted,
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            todo.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: todo.isCompleted
+                                  ? AppColors.textMuted
+                                  : AppColors.textPrimary,
+                              decoration: todo.isCompleted
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                              decorationColor: AppColors.textMuted,
+                            ),
+                          ),
+                        ),
+                        SyncDot(pending: todo.pendingSync),
+                      ],
                     ),
                     if (todo.note.isNotEmpty) ...[
                       const SizedBox(height: 2),

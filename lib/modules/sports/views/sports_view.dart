@@ -3,11 +3,13 @@ import 'package:get/get.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/services/connectivity_service.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/models/sport_record_model.dart';
 import '../../../routes/app_routes.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/nav_bar.dart';
+import '../../../shared/widgets/sync_dot.dart';
 import '../controllers/sport_controller.dart';
 
 /// Sports records screen — log and browse workout activity by day.
@@ -216,6 +218,10 @@ class _SportsViewState extends State<SportsView> {
                   }
                   final groups = ctrl.filteredByDay;
                   if (groups.isEmpty) {
+                    // The global feed can only render what's already cached,
+                    // so say so rather than implying nobody has trained.
+                    final offlineFeed = ctrl.showAllUsers.value &&
+                        !Get.find<ConnectivityService>().isOnline.value;
                     return Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -228,15 +234,21 @@ class _SportsViewState extends State<SportsView> {
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(color: AppColors.border),
                             ),
-                            child: const Icon(
-                              Icons.fitness_center_rounded,
+                            child: Icon(
+                              offlineFeed
+                                  ? Icons.wifi_off_rounded
+                                  : Icons.fitness_center_rounded,
                               color: AppColors.textMuted,
                               size: 26,
                             ),
                           ),
                           const SizedBox(height: 12),
-                          Text('No records this month',
-                              style: AppTextStyles.bodyMedium),
+                          Text(
+                            offlineFeed
+                                ? 'Everyone\'s records need a connection'
+                                : 'No records this month',
+                            style: AppTextStyles.bodyMedium,
+                          ),
                         ],
                       ),
                     );
@@ -484,15 +496,22 @@ class _SportDayGroup extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              record.description.isEmpty ? '—' : record.description,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
-              ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 2,
+            child: Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    record.description.isEmpty ? '—' : record.description,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                  ),
+                ),
+                SyncDot(pending: record.pendingSync),
+              ],
             ),
           ),
           if (showOwner && record.userName != null) ...[

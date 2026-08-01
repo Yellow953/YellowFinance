@@ -13,6 +13,10 @@ class TodoModel {
   final DateTime createdAt;
   final Recurrence recurrence;
 
+  /// True while this task has a local write not yet acknowledged by the server.
+  /// Client-derived state — never written to the document.
+  final bool pendingSync;
+
   const TodoModel({
     required this.id,
     required this.title,
@@ -21,6 +25,7 @@ class TodoModel {
     required this.isCompleted,
     required this.createdAt,
     this.recurrence = Recurrence.none,
+    this.pendingSync = false,
   });
 
   factory TodoModel.fromFirestore(DocumentSnapshot doc) {
@@ -29,12 +34,11 @@ class TodoModel {
       id: doc.id,
       title: d['title'] as String? ?? '',
       note: d['note'] as String? ?? '',
-      dueDate: d['dueDate'] != null
-          ? (d['dueDate'] as Timestamp).toDate()
-          : null,
+      dueDate: (d['dueDate'] as Timestamp?)?.toDate(),
       isCompleted: d['isCompleted'] as bool? ?? false,
-      createdAt: (d['createdAt'] as Timestamp).toDate(),
+      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       recurrence: _parseRecurrence(d['recurrence'] as String?),
+      pendingSync: doc.metadata.hasPendingWrites,
     );
   }
 
@@ -67,6 +71,7 @@ class TodoModel {
     bool clearDueDate = false,
     bool? isCompleted,
     Recurrence? recurrence,
+    bool? pendingSync,
   }) =>
       TodoModel(
         id: id,
@@ -76,5 +81,6 @@ class TodoModel {
         isCompleted: isCompleted ?? this.isCompleted,
         createdAt: createdAt,
         recurrence: recurrence ?? this.recurrence,
+        pendingSync: pendingSync ?? this.pendingSync,
       );
 }

@@ -11,6 +11,7 @@ import 'core/constants/app_colors.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/connectivity_service.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/sync_service.dart';
 import 'core/theme/app_theme.dart';
 import 'data/providers/firestore_provider.dart';
 import 'data/repositories/auth_repository.dart';
@@ -46,6 +47,8 @@ Future<void> main() async {
 
   // Register global services
   Get.put(ConnectivityService(), permanent: true);
+  // SyncService depends on ConnectivityService — register it after.
+  Get.put(SyncService(), permanent: true);
   Get.put(AuthService(), permanent: true);
   Get.put(FirestoreProvider(), permanent: true);
   Get.put(
@@ -99,6 +102,10 @@ class YellowFinanceApp extends StatelessWidget {
   }
 }
 
+/// Bottom status bar reporting connectivity and unsynced work.
+///
+/// Three states: offline, offline with queued changes, and online while the
+/// queue drains. It stays hidden when there's nothing to report.
 class _OfflineBannerOverlay extends StatelessWidget {
   final Widget child;
 
@@ -107,40 +114,64 @@ class _OfflineBannerOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final connectivity = Get.find<ConnectivityService>();
+    final sync = Get.find<SyncService>();
     return Obx(() {
       final offline = !connectivity.isOnline.value;
+      final pending = sync.pendingTotal;
+      final changes = pending == 1 ? '1 change' : '$pending changes';
+
+      final IconData? icon;
+      final String? message;
+      if (offline && pending > 0) {
+        icon = Icons.cloud_off_rounded;
+        message = 'No internet · $changes saved on this device';
+      } else if (offline) {
+        icon = Icons.wifi_off_rounded;
+        message = 'No internet connection';
+      } else if (pending > 0) {
+        icon = Icons.cloud_upload_rounded;
+        message = 'Syncing $changes…';
+      } else {
+        icon = null;
+        message = null;
+      }
+
       return Column(
         children: [
           Expanded(child: child),
           AnimatedSize(
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeInOut,
-            child: offline
-                ? SafeArea(
+            child: message == null
+                ? const SizedBox.shrink()
+                : SafeArea(
                     top: false,
                     child: Container(
                       width: double.infinity,
                       color: AppColors.dark,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: const Row(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 10, horizontal: 16),
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.wifi_off_rounded,
-                              size: 14, color: AppColors.textMuted),
-                          SizedBox(width: 6),
-                          Text(
-                            'No internet connection',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textMuted,
+                          Icon(icon, size: 14, color: AppColors.textMuted),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              message,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textMuted,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  )
-                : const SizedBox.shrink(),
+                  ),
           ),
         ],
       );

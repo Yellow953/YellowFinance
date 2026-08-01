@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 import '../models/transaction_model.dart';
@@ -10,6 +12,24 @@ class TransactionRepository {
 
   TransactionRepository({required FirestoreProvider firestore})
       : _firestore = firestore;
+
+  /// Runs [query] against the server, falling back to the local cache.
+  ///
+  /// `Source.serverAndCache` already falls back on its own, but only once the
+  /// SDK has concluded it is offline — which can outlast the timeout on a flaky
+  /// connection. Catching the timeout and re-reading from cache means a slow or
+  /// dead network degrades to cached data instead of an error.
+  Future<QuerySnapshot<Map<String, dynamic>>> _getWithCacheFallback(
+    Query<Map<String, dynamic>> query,
+  ) async {
+    try {
+      return await query
+          .get(const GetOptions(source: Source.serverAndCache))
+          .timeout(const Duration(seconds: 10));
+    } on TimeoutException {
+      return query.get(const GetOptions(source: Source.cache));
+    }
+  }
 
   /// Streams all transactions for [uid] ordered by date descending.
   Stream<List<TransactionModel>> watchTransactions(String uid) {
@@ -60,9 +80,7 @@ class TransactionRepository {
       query = query.startAfterDocument(startAfter);
     }
 
-    final snap = await query
-        .get(const GetOptions(source: Source.serverAndCache))
-        .timeout(const Duration(seconds: 10));
+    final snap = await _getWithCacheFallback(query);
     return (
       transactions: snap.docs.map(TransactionModel.fromFirestore).toList(),
       lastDoc: snap.docs.isNotEmpty ? snap.docs.last : null,
@@ -94,9 +112,7 @@ class TransactionRepository {
       );
     }
 
-    final snap = await query
-        .get(const GetOptions(source: Source.serverAndCache))
-        .timeout(const Duration(seconds: 10));
+    final snap = await _getWithCacheFallback(query);
 
     return snap.docs.map((doc) {
       final d = doc.data();
@@ -111,38 +127,44 @@ class TransactionRepository {
   /// Fetches transactions within the last [days] days.
   Future<List<TransactionModel>> fetchRecent(String uid, {int days = 90}) async {
     final since = DateTime.now().subtract(Duration(days: days));
-    final snap = await _firestore
-        .transactionsCollection(uid)
-        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(since))
-        .orderBy('date', descending: true)
-        .get();
+    final snap = await _getWithCacheFallback(
+      _firestore
+          .transactionsCollection(uid)
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(since))
+          .orderBy('date', descending: true),
+    );
     return snap.docs.map(TransactionModel.fromFirestore).toList();
   }
 
-  /// Adds a new transaction document.
-  Future<TransactionModel> addTransaction({
-    required String uid,
+  /// Builds a new transaction with a fresh ID, without touching Firestore.
+  ///
+  /// Separate from [writeTransaction] so callers can commit the model to local
+  /// state immediately and hand the write to `SyncService` — offline a Firestore
+  /// write future never completes, so it must never gate the UI.
+  TransactionModel buildTransaction({
     required String type,
     required int amount,
     required String category,
     String description = '',
     required DateTime date,
-  }) async {
-    final id = _uuid.v4();
-    final txn = TransactionModel(
-      id: id,
-      type: type,
-      amount: amount,
-      category: category,
-      description: description,
-      date: date,
-      createdAt: DateTime.now(),
-    );
-    await _firestore
+  }) =>
+      TransactionModel(
+        id: _uuid.v4(),
+        type: type,
+        amount: amount,
+        category: category,
+        description: description,
+        date: date,
+        createdAt: DateTime.now(),
+        pendingSync: true,
+      );
+
+  /// Persists [txn]. Offline this queues to disk and replays on reconnect.
+  Future<void> writeTransaction(String uid, TransactionModel txn) {
+    return _firestore
         .transactionsCollection(uid)
-        .doc(id)
+        .doc(txn.id)
         .set(txn.toFirestore());
-    return txn;
   }
 
   /// Deletes a transaction by ID.

@@ -1,5 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
+import 'dart:async';
+
+import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../data/models/sport_record_model.dart';
 import '../../../data/models/transaction_model.dart';
@@ -64,13 +67,22 @@ class ReportsController extends GetxController {
 
   Future<List<SportRecordModel>> _fetchSportRecords(String uid) async {
     final since = DateTime.now().subtract(const Duration(days: 365));
-    final snap = await FirebaseFirestore.instance
-        .collection('users')
+    final query = FirebaseFirestore.instance
+        .collection(AppConstants.colUsers)
         .doc(uid)
-        .collection('sports')
+        .collection(AppConstants.colSports)
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(since))
-        .orderBy('date', descending: true)
-        .get();
+        .orderBy('date', descending: true);
+    // Fall back to the cache so reports still render offline instead of
+    // failing the whole Future.wait and showing an error.
+    QuerySnapshot<Map<String, dynamic>> snap;
+    try {
+      snap = await query
+          .get(const GetOptions(source: Source.serverAndCache))
+          .timeout(const Duration(seconds: 10));
+    } on TimeoutException {
+      snap = await query.get(const GetOptions(source: Source.cache));
+    }
     return snap.docs.map(SportRecordModel.fromFirestore).toList();
   }
 

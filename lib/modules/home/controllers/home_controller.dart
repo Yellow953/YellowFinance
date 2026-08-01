@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/sport_reminder_service.dart';
 import '../../../data/models/sport_record_model.dart';
@@ -96,17 +97,23 @@ class HomeController extends GetxController {
     final uid = Get.find<AuthController>().user.value?.uid;
     if (uid == null) return;
     _sportSub = FirebaseFirestore.instance
-        .collection('users')
+        .collection(AppConstants.colUsers)
         .doc(uid)
-        .collection('sports')
+        .collection(AppConstants.colSports)
         .orderBy('date', descending: true)
         .limit(200)
         .snapshots()
-        .listen((snap) {
-      final all = snap.docs.map(SportRecordModel.fromFirestore).toList();
-      sportRecords.assignAll(all);
-      _computeSportStreak(all);
-    });
+        .listen(
+      (snap) {
+        final all = snap.docs.map(SportRecordModel.fromFirestore).toList();
+        sportRecords.assignAll(all);
+        _computeSportStreak(all);
+      },
+      // Without a handler a stream error surfaces as an unhandled async
+      // exception. The home screen shows no error UI by design, so this just
+      // leaves the last good data on screen.
+      onError: (_) => isLoading.value = false,
+    );
   }
 
   void _computeSportStreak(List<SportRecordModel> all) {

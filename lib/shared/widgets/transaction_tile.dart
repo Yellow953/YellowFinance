@@ -3,6 +3,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_text_styles.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/transaction_model.dart';
+import 'sync_dot.dart';
 
 /// List tile for a single transaction.
 class TransactionTile extends StatelessWidget {
@@ -50,12 +51,20 @@ class TransactionTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    hideAmount ? '••••••' : transaction.category,
-                    style: AppTextStyles.bodyMedium
-                        .copyWith(fontWeight: FontWeight.w600),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          hideAmount ? '••••••' : transaction.category,
+                          style: AppTextStyles.bodyMedium
+                              .copyWith(fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      SyncDot(pending: transaction.pendingSync),
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Text(

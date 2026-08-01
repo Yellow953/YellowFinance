@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/services/connectivity_service.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../core/services/sync_service.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../data/models/todo_model.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -61,6 +64,10 @@ class TodoController extends GetxController {
     final now = DateTime.now();
     focusedMonth = DateTime(now.year, now.month).obs;
     selectedDay = DateTime(now.year, now.month, now.day).obs;
+    // Keep the global sync indicator in step with what's actually unsynced.
+    ever(todos, (List<TodoModel> list) {
+      _sync.reportPending('tasks', list.where((t) => t.pendingSync).length);
+    });
     final authCtrl = Get.find<AuthController>();
     if (authCtrl.user.value != null) {
       _subscribe();
@@ -74,16 +81,19 @@ class TodoController extends GetxController {
   @override
   void onClose() {
     _sub?.cancel();
+    _sync.reportPending('tasks', 0);
     super.onClose();
   }
 
   String? get _uid => Get.find<AuthController>().user.value?.uid;
 
+  SyncService get _sync => Get.find<SyncService>();
+
   CollectionReference<Map<String, dynamic>> _col(String uid) =>
       FirebaseFirestore.instance
-          .collection('users')
+          .collection(AppConstants.colUsers)
           .doc(uid)
-          .collection('todos');
+          .collection(AppConstants.colTodos);
 
   // ── Stream subscription ───────────────────────────────────────────────────
   // snapshots() serves from Firestore's local cache immediately, then updates
@@ -120,6 +130,9 @@ class TodoController extends GetxController {
     // from the server to ensure we're not stuck on stale cache.
     final uid = _uid;
     if (uid == null) return;
+    // Offline there is nothing to re-fetch — the stream already holds the
+    // cache and a Source.server read could only throw.
+    if (!Get.find<ConnectivityService>().isOnline.value) return;
     try {
       final snap = await _col(uid)
           .orderBy('createdAt', descending: true)
@@ -195,8 +208,10 @@ class TodoController extends GetxController {
   }
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
-  // Writes are optimistic: the local list updates instantly. Firestore queues
-  // the write offline and syncs when connectivity is restored.
+  // Writes are optimistic: local state and notifications are committed first,
+  // then the Firestore call is handed to SyncService. Nothing user-visible is
+  // ever awaited on the network — offline a Firestore write future never
+  // completes, so awaiting one would hang the UI indefinitely.
 
   Future<void> addTodo({
     required String title,
@@ -219,13 +234,20 @@ class TodoController extends GetxController {
         isCompleted: false,
         createdAt: DateTime.now(),
         recurrence: recurrence,
+        pendingSync: true,
       );
-      // Optimistically insert; the stream will confirm once it echoes back.
+      // Optimistically insert; the stream echoes it back (with pendingSync
+      // cleared) once the server acknowledges.
       todos.insert(0, todo);
-      await ref.set(todo.toFirestore());
-      // Schedule phone notification at the due time (if time was set).
+      // Schedule the phone notification before the write is issued — the alarm
+      // is local, so a task added offline still fires on time.
       await NotificationService.schedule(todo);
-      AppSnackbar.success('Task added');
+      AppSnackbar.saved('Task added');
+      _sync.enqueue(
+        () => ref.set(todo.toFirestore()),
+        label: 'task',
+        onError: () => todos.removeWhere((t) => t.id == ref.id),
+      );
     } catch (_) {
       AppSnackbar.error('Could not save task.');
     } finally {
@@ -247,21 +269,21 @@ class TodoController extends GetxController {
         todo.recurrence != Recurrence.none &&
         todo.dueDate != null) {
       final nextDate = _nextOccurrence(todo.dueDate!, todo.recurrence);
-      final advanced = todo.copyWith(dueDate: nextDate);
+      final advanced = todo.copyWith(dueDate: nextDate, pendingSync: true);
       todos[idx] = advanced;
-      try {
-        await _col(uid)
-            .doc(id)
-            .update({'dueDate': Timestamp.fromDate(nextDate)});
-        AppSnackbar.success('Next occurrence scheduled');
-      } catch (_) {
-        todos[idx] = todo;
-        AppSnackbar.error('Could not update task.');
-      }
+      AppSnackbar.saved('Next occurrence scheduled');
+      _sync.enqueue(
+        () => _col(uid).doc(id).update({'dueDate': Timestamp.fromDate(nextDate)}),
+        label: 'task',
+        onError: () => _restore(id, todo),
+      );
       return;
     }
 
-    final updated = todo.copyWith(isCompleted: !todo.isCompleted);
+    final updated = todo.copyWith(
+      isCompleted: !todo.isCompleted,
+      pendingSync: true,
+    );
     todos[idx] = updated;
     // Cancel the alarm when completing; reschedule if un-completing.
     if (updated.isCompleted) {
@@ -269,18 +291,26 @@ class TodoController extends GetxController {
     } else {
       await NotificationService.schedule(updated);
     }
-    try {
-      await _col(uid).doc(id).update({'isCompleted': updated.isCompleted});
-    } catch (_) {
-      todos[idx] = todos[idx].copyWith(isCompleted: !updated.isCompleted);
-      // Revert the notification state too.
-      if (updated.isCompleted) {
-        await NotificationService.schedule(todos[idx]);
-      } else {
-        await NotificationService.cancel(id);
-      }
-      AppSnackbar.error('Could not update task.');
-    }
+    _sync.enqueue(
+      () => _col(uid).doc(id).update({'isCompleted': updated.isCompleted}),
+      label: 'task',
+      onError: () {
+        _restore(id, todo);
+        // Revert the notification state too.
+        if (updated.isCompleted) {
+          NotificationService.schedule(todo);
+        } else {
+          NotificationService.cancel(id);
+        }
+      },
+    );
+  }
+
+  /// Puts [original] back at whatever index [id] currently sits, used to roll
+  /// back an optimistic edit that the server ultimately rejected.
+  void _restore(String id, TodoModel original) {
+    final idx = todos.indexWhere((t) => t.id == id);
+    if (idx != -1) todos[idx] = original;
   }
 
   Future<void> updateTodo({
@@ -304,40 +334,46 @@ class TodoController extends GetxController {
       dueDate: dueDate,
       recurrence: dueDate != null ? recurrence : Recurrence.none,
     );
-    todos[idx] = updated;
+    todos[idx] = updated.copyWith(pendingSync: true);
 
     if (updated.dueDate != original.dueDate) {
       await NotificationService.cancel(id);
       await NotificationService.schedule(updated);
     }
 
-    try {
-      await _col(uid).doc(id).update({
+    AppSnackbar.saved('Task updated');
+    isSaving.value = false;
+    _sync.enqueue(
+      () => _col(uid).doc(id).update({
         'title': updated.title,
         'note': updated.note,
         'dueDate': updated.dueDate != null
             ? Timestamp.fromDate(updated.dueDate!)
             : null,
         'recurrence': updated.recurrence.name,
-      });
-      AppSnackbar.success('Task updated');
-    } catch (_) {
-      todos[idx] = original;
-      AppSnackbar.error('Could not update task.');
-    } finally {
-      isSaving.value = false;
-    }
+      }),
+      label: 'task',
+      onError: () => _restore(id, original),
+    );
   }
 
   Future<void> deleteTodo(String id) async {
     final uid = _uid;
     if (uid == null) return;
-    todos.removeWhere((t) => t.id == id);
+    final idx = todos.indexWhere((t) => t.id == id);
+    if (idx == -1) return;
+    final removed = todos[idx];
+    todos.removeAt(idx);
     await NotificationService.cancel(id);
-    try {
-      await _col(uid).doc(id).delete();
-    } catch (_) {
-      AppSnackbar.error('Could not delete task.');
-    }
+    _sync.enqueue(
+      () => _col(uid).doc(id).delete(),
+      label: 'task',
+      isDelete: true,
+      onError: () {
+        // Put the task back where it was and restore its alarm.
+        todos.insert(idx.clamp(0, todos.length), removed);
+        NotificationService.schedule(removed);
+      },
+    );
   }
 }

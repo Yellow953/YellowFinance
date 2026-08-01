@@ -10,6 +10,10 @@ class SportRecordModel {
   final String? userId;        // set when read from all_sports collection
   final String? userName;      // display name snapshot, set at write time
 
+  /// True while this record has a local write not yet acknowledged by the
+  /// server. Client-derived state — never written to the document.
+  final bool pendingSync;
+
   const SportRecordModel({
     required this.id,
     required this.date,
@@ -18,20 +22,33 @@ class SportRecordModel {
     required this.createdAt,
     this.userId,
     this.userName,
+    this.pendingSync = false,
   });
 
   factory SportRecordModel.fromFirestore(DocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>;
     return SportRecordModel(
       id: doc.id,
-      date: (d['date'] as Timestamp).toDate(),
+      date: (d['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
       category: d['category'] as String? ?? '',
       description: d['description'] as String? ?? '',
-      createdAt: (d['createdAt'] as Timestamp).toDate(),
+      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       userId: d['userId'] as String?,
       userName: d['userName'] as String?,
+      pendingSync: doc.metadata.hasPendingWrites,
     );
   }
+
+  SportRecordModel copyWith({bool? pendingSync}) => SportRecordModel(
+        id: id,
+        date: date,
+        category: category,
+        description: description,
+        createdAt: createdAt,
+        userId: userId,
+        userName: userName,
+        pendingSync: pendingSync ?? this.pendingSync,
+      );
 
   Map<String, dynamic> toFirestore() => {
         'date': Timestamp.fromDate(date),

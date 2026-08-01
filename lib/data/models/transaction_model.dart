@@ -13,6 +13,10 @@ class TransactionModel extends Equatable {
   final DateTime date;
   final DateTime createdAt;
 
+  /// True while this transaction has a local write not yet acknowledged by the
+  /// server. Client-derived state — never written to the document.
+  final bool pendingSync;
+
   const TransactionModel({
     required this.id,
     required this.type,
@@ -21,6 +25,7 @@ class TransactionModel extends Equatable {
     this.description = '',
     required this.date,
     required this.createdAt,
+    this.pendingSync = false,
   });
 
   bool get isIncome => type == AppConstants.txnIncome;
@@ -36,8 +41,20 @@ class TransactionModel extends Equatable {
       description: data['description'] as String? ?? '',
       date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      pendingSync: doc.metadata.hasPendingWrites,
     );
   }
+
+  TransactionModel copyWith({bool? pendingSync}) => TransactionModel(
+        id: id,
+        type: type,
+        amount: amount,
+        category: category,
+        description: description,
+        date: date,
+        createdAt: createdAt,
+        pendingSync: pendingSync ?? this.pendingSync,
+      );
 
   Map<String, dynamic> toFirestore() => {
         'type': type,
@@ -50,5 +67,5 @@ class TransactionModel extends Equatable {
 
   @override
   List<Object?> get props =>
-      [id, type, amount, category, description, date];
+      [id, type, amount, category, description, date, pendingSync];
 }

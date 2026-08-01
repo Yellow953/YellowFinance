@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/services/sync_service.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../data/models/sport_record_model.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -36,9 +37,11 @@ class SportController extends GetxController {
     super.onInit();
     _subscribe();
     // Streak only depends on own records — skip recomputing it on filter/month changes.
-    ever(records, (_) {
+    ever(records, (List<SportRecordModel> list) {
       _recompute();
       _computeStreak();
+      // Keep the global sync indicator in step with what's actually unsynced.
+      _sync.reportPending('sports', list.where((r) => r.pendingSync).length);
     });
     ever(selectedMonth, (_) => _recompute());
     ever(filterCategory, (_) => _recompute());
@@ -52,10 +55,13 @@ class SportController extends GetxController {
   @override
   void onClose() {
     _sub?.cancel();
+    _sync.reportPending('sports', 0);
     super.onClose();
   }
 
   String? get _uid => Get.find<AuthController>().user.value?.uid;
+
+  SyncService get _sync => Get.find<SyncService>();
 
   String get _displayName =>
       Get.find<AuthController>().user.value?.displayName ?? '';
@@ -228,18 +234,27 @@ class SportController extends GetxController {
         createdAt: DateTime.now(),
         userId: uid,
         userName: _displayName,
+        pendingSync: true,
       );
+      // Optimistically insert; the stream echoes it back (with pendingSync
+      // cleared) once the server acknowledges.
       records.insert(0, record);
 
+      // The personal and global copies go out as one batch, so offline they
+      // queue and later replay atomically — the two can't drift apart.
       final batch = FirebaseFirestore.instance.batch();
       batch.set(ref, record.toFirestore());
       batch.set(
         _allSportsCol.doc(ref.id),
         record.toAllSportsFirestore(uid: uid, displayName: _displayName),
       );
-      await batch.commit();
 
-      AppSnackbar.success('Record added');
+      AppSnackbar.saved('Record added');
+      _sync.enqueue(
+        batch.commit,
+        label: 'sport record',
+        onError: () => records.removeWhere((r) => r.id == ref.id),
+      );
     } catch (_) {
       AppSnackbar.error('Could not save record.');
     } finally {
@@ -250,14 +265,19 @@ class SportController extends GetxController {
   Future<void> deleteRecord(String id) async {
     final uid = _uid;
     if (uid == null) return;
-    records.removeWhere((r) => r.id == id);
-    try {
-      final batch = FirebaseFirestore.instance.batch();
-      batch.delete(_col(uid).doc(id));
-      batch.delete(_allSportsCol.doc(id));
-      await batch.commit();
-    } catch (_) {
-      AppSnackbar.error('Could not delete record.');
-    }
+    final idx = records.indexWhere((r) => r.id == id);
+    if (idx == -1) return;
+    final removed = records[idx];
+    records.removeAt(idx);
+
+    final batch = FirebaseFirestore.instance.batch();
+    batch.delete(_col(uid).doc(id));
+    batch.delete(_allSportsCol.doc(id));
+    _sync.enqueue(
+      batch.commit,
+      label: 'sport record',
+      isDelete: true,
+      onError: () => records.insert(idx.clamp(0, records.length), removed),
+    );
   }
 }

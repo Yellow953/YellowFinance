@@ -248,8 +248,10 @@ class _SecuritySectionState extends State<_SecuritySection> {
     if (!mounted) return;
     setState(() => _busy = false);
     if (!changed) {
-      // Enabling requires a successful prompt; a cancel leaves it off.
-      AppSnackbar.error('Could not verify it\'s you. App lock unchanged.');
+      // Enabling requires a successful prompt; a cancel leaves it off. A plain
+      // cancel needs no message — the user just dismissed their own prompt.
+      final reason = _lock.lastFailureMessage;
+      if (reason != null) AppSnackbar.error(reason);
       return;
     }
     AppSnackbar.success(

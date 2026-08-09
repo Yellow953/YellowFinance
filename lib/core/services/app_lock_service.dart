@@ -55,6 +55,8 @@ class AppLockService extends GetxService {
   Future<bool> isDeviceSupported() async {
     try {
       return await _auth.isDeviceSupported();
+    } on LocalAuthException {
+      return false;
     } on PlatformException {
       return false;
     }
@@ -70,6 +72,8 @@ class AppLockService extends GetxService {
           types.contains(BiometricType.strong)) {
         return 'Fingerprint';
       }
+    } on LocalAuthException {
+      // Fall through to the passcode label.
     } on PlatformException {
       // Fall through to the passcode label.
     }
@@ -100,24 +104,62 @@ class AppLockService extends GetxService {
     return true;
   }
 
+  /// Why the last [authenticate] call failed, or null if it succeeded or the
+  /// user simply cancelled. Callers use this to explain a refusal that the
+  /// system UI didn't already explain itself.
+  LocalAuthExceptionCode? lastFailure;
+
   /// Shows the system biometric / passcode prompt.
   Future<bool> authenticate({
     String reason = 'Unlock YellowFinance',
   }) async {
     _prompting = true;
+    lastFailure = null;
     try {
       return await _auth.authenticate(
         localizedReason: reason,
-        options: const AuthenticationOptions(
-          stickyAuth: true,
-          biometricOnly: false,
-        ),
+        // Was `stickyAuth` before local_auth 3.x: retry on foregrounding
+        // instead of failing when the system backgrounds us mid-prompt.
+        persistAcrossBackgrounding: true,
       );
+    } on LocalAuthException catch (e) {
+      // local_auth 3.x reports failures as this rather than PlatformException,
+      // and it does not extend it — the two catches are not redundant.
+      lastFailure = e.code;
+      if (kDebugMode) debugPrint('AppLockService: auth failed — ${e.code}');
+      return false;
     } on PlatformException catch (e) {
+      lastFailure = LocalAuthExceptionCode.unknownError;
       if (kDebugMode) debugPrint('AppLockService: auth failed — ${e.code}');
       return false;
     } finally {
       _prompting = false;
+    }
+  }
+
+  /// A user-facing explanation for [lastFailure], or null when the failure
+  /// needs no explanation (the user cancelled, or the system already said so).
+  String? get lastFailureMessage {
+    switch (lastFailure) {
+      case null:
+      case LocalAuthExceptionCode.userCanceled:
+      case LocalAuthExceptionCode.systemCanceled:
+      case LocalAuthExceptionCode.authInProgress:
+        return null;
+      case LocalAuthExceptionCode.noCredentialsSet:
+        return 'Set a device passcode first — app lock relies on it.';
+      case LocalAuthExceptionCode.noBiometricsEnrolled:
+        return 'No biometrics enrolled on this device.';
+      case LocalAuthExceptionCode.noBiometricHardware:
+      case LocalAuthExceptionCode.biometricHardwareTemporarilyUnavailable:
+        return 'Biometrics aren\'t available on this device.';
+      case LocalAuthExceptionCode.temporaryLockout:
+      case LocalAuthExceptionCode.biometricLockout:
+        return 'Too many attempts. Unlock your device, then try again.';
+      case LocalAuthExceptionCode.timeout:
+        return 'That took too long — try again.';
+      default:
+        return 'Couldn\'t verify it\'s you. Try again.';
     }
   }
 

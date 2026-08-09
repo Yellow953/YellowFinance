@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
@@ -32,6 +34,19 @@ class SyncService extends GetxService {
   /// When the most recent write was acknowledged by the server.
   final Rx<DateTime?> lastSyncedAt = Rx<DateTime?>(null);
 
+  /// Whether the "Syncing…" indicator should be on screen.
+  ///
+  /// Deliberately not just `pendingTotal > 0`: a healthy write is acknowledged
+  /// in well under a second, and showing a banner for that long is noise the
+  /// user can't act on. This only turns true once work has been outstanding for
+  /// [_syncingGrace], and turns false the instant the queue drains — so the
+  /// banner appears only when syncing is genuinely slow or stalled.
+  final RxBool showSyncing = false.obs;
+
+  static const _syncingGrace = Duration(milliseconds: 1200);
+
+  Timer? _graceTimer;
+
   /// Total unsynced changes across every feature. Reactive — read inside `Obx`.
   int get pendingTotal =>
       _pendingBySource.values.fold(0, (a, b) => a + b) + _pendingDeletes.value;
@@ -60,6 +75,31 @@ class SyncService extends GetxService {
     } else {
       _pendingBySource[source] = count;
     }
+    _refreshSyncingVisibility();
+  }
+
+  /// Starts or cancels the grace timer behind [showSyncing].
+  void _refreshSyncingVisibility() {
+    if (pendingTotal == 0) {
+      _graceTimer?.cancel();
+      _graceTimer = null;
+      showSyncing.value = false;
+      return;
+    }
+    // Already visible, or already counting down — nothing to restart. Resetting
+    // the timer on every report would let a steady trickle of writes hide a
+    // queue that is genuinely stuck.
+    if (showSyncing.value || _graceTimer != null) return;
+    _graceTimer = Timer(_syncingGrace, () {
+      _graceTimer = null;
+      if (pendingTotal > 0) showSyncing.value = true;
+    });
+  }
+
+  @override
+  void onClose() {
+    _graceTimer?.cancel();
+    super.onClose();
   }
 
   /// Commits [write] in the background and returns immediately.
@@ -79,17 +119,22 @@ class SyncService extends GetxService {
     VoidCallback? onSynced,
     VoidCallback? onError,
   }) {
-    if (isDelete) _pendingDeletes.value++;
+    if (isDelete) {
+      _pendingDeletes.value++;
+      _refreshSyncingVisibility();
+    }
     write().then(
       (_) {
         if (isDelete) _pendingDeletes.value--;
         lastSyncedAt.value = DateTime.now();
         onSynced?.call();
+        _refreshSyncingVisibility();
       },
       onError: (Object e) {
         if (isDelete) _pendingDeletes.value--;
         AppSnackbar.error('Could not sync $label.');
         onError?.call();
+        _refreshSyncingVisibility();
       },
     );
   }

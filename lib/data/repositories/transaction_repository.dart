@@ -32,11 +32,15 @@ class TransactionRepository {
   }
 
   /// Streams all transactions for [uid] ordered by date descending.
+  ///
+  /// `includeMetadataChanges` so the stream re-emits when a write is
+  /// acknowledged: `pendingSync` reads `hasPendingWrites`, and an ack changes
+  /// only that metadata.
   Stream<List<TransactionModel>> watchTransactions(String uid) {
     return _firestore
         .transactionsCollection(uid)
         .orderBy('date', descending: true)
-        .snapshots()
+        .snapshots(includeMetadataChanges: true)
         .map((snap) =>
             snap.docs.map(TransactionModel.fromFirestore).toList());
   }

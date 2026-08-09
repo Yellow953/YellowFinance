@@ -2,14 +2,19 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../data/models/diary_entry_model.dart';
+import '../../../data/models/goal_model.dart';
 import '../../../data/models/sport_record_model.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../routes/app_routes.dart';
 import '../../../shared/widgets/nav_bar.dart';
 import '../../../shared/widgets/transaction_tile.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../budgets/controllers/budget_controller.dart';
+import '../../diary/controllers/diary_controller.dart';
 import '../controllers/reports_controller.dart';
 
 const _kMonthNames = [
@@ -28,6 +33,8 @@ class ReportsView extends StatefulWidget {
 class _ReportsViewState extends State<ReportsView> {
   final controller = Get.find<ReportsController>();
   final _authCtrl = Get.find<AuthController>();
+  final _budgetCtrl = Get.find<BudgetController>();
+  final _diaryCtrl = Get.find<DiaryController>();
 
   static const _routes = [
     AppRoutes.HOME,
@@ -177,6 +184,48 @@ class _ReportsViewState extends State<ReportsView> {
                       }),
                       const SizedBox(height: 24),
 
+                      // ── Budget performance ────────────────────────────
+                      const Text('Budget Performance',
+                          style: AppTextStyles.titleMedium),
+                      const SizedBox(height: 12),
+                      Obx(() => _BudgetPerformanceCard(
+                            // The budget controller keys off an explicit month,
+                            // so it reports on whichever month Reports is
+                            // showing rather than its own screen's selection.
+                            expenses: _budgetCtrl.progressFor(
+                              type: AppConstants.txnExpense,
+                              month: controller.selectedMonth.value,
+                            ),
+                            incomes: _budgetCtrl.progressFor(
+                              type: AppConstants.txnIncome,
+                              month: controller.selectedMonth.value,
+                            ),
+                            hidden: _authCtrl.hideBalances.value,
+                          )),
+
+                      const SizedBox(height: 32),
+
+                      // ── Savings goals ─────────────────────────────────
+                      const Text('Savings Goals',
+                          style: AppTextStyles.titleMedium),
+                      const SizedBox(height: 12),
+                      Obx(() => _GoalsProgressCard(
+                            goals: _budgetCtrl.goals.toList(),
+                            hidden: _authCtrl.hideBalances.value,
+                          )),
+
+                      const SizedBox(height: 32),
+
+                      // ── Diary ─────────────────────────────────────────
+                      const Text('Diary', style: AppTextStyles.titleMedium),
+                      const SizedBox(height: 12),
+                      Obx(() => _DiaryStatsCard(
+                            entries: _diaryCtrl.entries.toList(),
+                            month: controller.selectedMonth.value,
+                          )),
+
+                      const SizedBox(height: 32),
+
                       // ── Sports analytics ──────────────────────────────
                       const Text('Activity', style: AppTextStyles.titleMedium),
                       const SizedBox(height: 12),
@@ -226,6 +275,480 @@ class _ReportsViewState extends State<ReportsView> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─── Shared report card shell ────────────────────────────────────────────────
+
+/// White panel every report section sits in.
+class _ReportCard extends StatelessWidget {
+  final Widget child;
+
+  const _ReportCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Centred "nothing here" line, sized to match a populated card.
+class _ReportEmpty extends StatelessWidget {
+  final String message;
+
+  const _ReportEmpty(this.message);
+
+  @override
+  Widget build(BuildContext context) {
+    return _ReportCard(
+      child: SizedBox(
+        height: 68,
+        child: Center(
+          child: Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Thin progress bar used by the budget and goal rows.
+class _MiniBar extends StatelessWidget {
+  final double ratio;
+  final Color color;
+
+  const _MiniBar({required this.ratio, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Stack(
+        children: [
+          Container(height: 6, color: AppColors.background),
+          FractionallySizedBox(
+            widthFactor: ratio.clamp(0.0, 1.0),
+            child: Container(height: 6, color: color),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Budget performance ──────────────────────────────────────────────────────
+
+/// How each budget for the selected month actually turned out.
+class _BudgetPerformanceCard extends StatelessWidget {
+  final List<BudgetProgress> expenses;
+  final List<BudgetProgress> incomes;
+  final bool hidden;
+
+  const _BudgetPerformanceCard({
+    required this.expenses,
+    required this.incomes,
+    required this.hidden,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (expenses.isEmpty && incomes.isEmpty) {
+      return const _ReportEmpty('No budgets set for this month.');
+    }
+
+    final kept =
+        expenses.length - BudgetController.overBudgetIn(expenses);
+    final metTargets = incomes
+        .where((p) => p.actualCents >= p.budget.limitCents)
+        .length;
+    // Built once and indexed: rebuilding it per iteration to find the last
+    // element would also compare budgets by value, which Equatable makes
+    // ambiguous for two identically-configured rows.
+    final rows = [...expenses, ...incomes];
+
+    return _ReportCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (expenses.isNotEmpty)
+                Expanded(
+                  child: _HeadlineStat(
+                    value: '$kept/${expenses.length}',
+                    label: expenses.length == 1
+                        ? 'limit kept'
+                        : 'limits kept',
+                    color: kept == expenses.length
+                        ? AppColors.success
+                        : AppColors.danger,
+                  ),
+                ),
+              if (incomes.isNotEmpty)
+                Expanded(
+                  child: _HeadlineStat(
+                    value: '$metTargets/${incomes.length}',
+                    label: incomes.length == 1
+                        ? 'target met'
+                        : 'targets met',
+                    color: metTargets == incomes.length
+                        ? AppColors.success
+                        : AppColors.primary,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          for (var i = 0; i < rows.length; i++) ...[
+            _BudgetPerformanceRow(progress: rows[i], hidden: hidden),
+            if (i < rows.length - 1) const SizedBox(height: 14),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _HeadlineStat extends StatelessWidget {
+  final String value;
+  final String label;
+  final Color color;
+
+  const _HeadlineStat({
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(label, style: AppTextStyles.labelSmall),
+      ],
+    );
+  }
+}
+
+class _BudgetPerformanceRow extends StatelessWidget {
+  final BudgetProgress progress;
+  final bool hidden;
+
+  const _BudgetPerformanceRow({
+    required this.progress,
+    required this.hidden,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final budget = progress.budget;
+    final limit = budget.limitCents;
+    final actual = progress.actualCents;
+    final ratio = limit <= 0 ? 0.0 : actual / limit;
+    final diff = limit - actual;
+
+    // Expense: over the limit is the failure. Income: reaching it is the win.
+    final Color color;
+    final String status;
+    if (budget.isExpense) {
+      color = ratio > 1
+          ? AppColors.danger
+          : (ratio >= 0.8 ? AppColors.primary : AppColors.success);
+      status = hidden
+          ? '••••'
+          : diff >= 0
+              ? '${Formatters.currency(diff)} under'
+              : '${Formatters.currency(-diff)} over';
+    } else {
+      color = ratio >= 1 ? AppColors.success : AppColors.primary;
+      status = hidden
+          ? '••••'
+          : diff <= 0
+              ? 'Target met'
+              : '${Formatters.currency(diff)} short';
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                budget.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              hidden
+                  ? '••••'
+                  : '${Formatters.currency(actual)} / ${Formatters.currency(limit)}',
+              style: const TextStyle(
+                  fontSize: 12, color: AppColors.textMuted),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        _MiniBar(ratio: ratio, color: color),
+        const SizedBox(height: 6),
+        Text(
+          status,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Savings goals ───────────────────────────────────────────────────────────
+
+/// Cumulative goal progress. Not month-scoped — goals accumulate over time, so
+/// this reports the same figures whichever month is selected.
+class _GoalsProgressCard extends StatelessWidget {
+  final List<GoalModel> goals;
+  final bool hidden;
+
+  const _GoalsProgressCard({required this.goals, required this.hidden});
+
+  @override
+  Widget build(BuildContext context) {
+    if (goals.isEmpty) {
+      return const _ReportEmpty('No savings goals yet.');
+    }
+
+    final target = goals.fold<int>(0, (a, g) => a + g.targetCents);
+    final saved = goals.fold<int>(0, (a, g) => a + g.savedCents);
+    final reached = goals.where((g) => g.isComplete).length;
+
+    return _ReportCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _HeadlineStat(
+                  value: hidden ? '••••' : Formatters.currency(saved),
+                  label: 'saved in total',
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              Expanded(
+                child: _HeadlineStat(
+                  value: '$reached/${goals.length}',
+                  label: goals.length == 1 ? 'goal reached' : 'goals reached',
+                  color: reached == goals.length
+                      ? AppColors.success
+                      : AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            hidden
+                ? 'of •••• targeted'
+                : 'of ${Formatters.currency(target)} targeted',
+            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 16),
+          for (var i = 0; i < goals.length; i++) ...[
+            _GoalProgressRow(goal: goals[i], hidden: hidden),
+            if (i < goals.length - 1) const SizedBox(height: 14),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _GoalProgressRow extends StatelessWidget {
+  final GoalModel goal;
+  final bool hidden;
+
+  const _GoalProgressRow({required this.goal, required this.hidden});
+
+  @override
+  Widget build(BuildContext context) {
+    final color =
+        goal.isComplete ? AppColors.success : AppColors.primary;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                goal.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              '${(goal.progress * 100).round()}%',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        _MiniBar(ratio: goal.progress, color: color),
+        const SizedBox(height: 6),
+        Text(
+          hidden
+              ? '•••• of ••••'
+              : '${Formatters.currency(goal.savedCents)} of ${Formatters.currency(goal.targetCents)}',
+          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Diary stats ─────────────────────────────────────────────────────────────
+
+/// Writing activity and mood mix for the selected month.
+class _DiaryStatsCard extends StatelessWidget {
+  final List<DiaryEntryModel> entries;
+  final DateTime month;
+
+  const _DiaryStatsCard({required this.entries, required this.month});
+
+  @override
+  Widget build(BuildContext context) {
+    final monthly = entries
+        .where((e) => e.date.year == month.year && e.date.month == month.month)
+        .toList();
+
+    if (monthly.isEmpty) {
+      return const _ReportEmpty('No diary entries this month.');
+    }
+
+    // Distinct days matter more than raw entries — two entries in one day is
+    // still one day of journalling.
+    final daysWritten = monthly
+        .map((e) => DateTime(e.date.year, e.date.month, e.date.day))
+        .toSet()
+        .length;
+    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
+    final words = monthly.fold<int>(0, (a, e) => a + e.wordCount);
+
+    final moods = <Mood, int>{};
+    for (final e in monthly.where((e) => e.mood != Mood.none)) {
+      moods[e.mood] = (moods[e.mood] ?? 0) + 1;
+    }
+    final ranked = moods.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return _ReportCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _HeadlineStat(
+                  value: '${monthly.length}',
+                  label: monthly.length == 1 ? 'entry' : 'entries',
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              Expanded(
+                child: _HeadlineStat(
+                  value: '$daysWritten/$daysInMonth',
+                  label: 'days written',
+                  color: AppColors.primary,
+                ),
+              ),
+              Expanded(
+                child: _HeadlineStat(
+                  value: Formatters.compact(words),
+                  label: 'words',
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _MiniBar(
+            ratio: daysWritten / daysInMonth,
+            color: AppColors.primary,
+          ),
+          if (ranked.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const Text('MOOD', style: AppTextStyles.labelSmall),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final e in ranked)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${e.key.emoji} ${e.key.label} · ${e.value}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ],
       ),
     );
   }

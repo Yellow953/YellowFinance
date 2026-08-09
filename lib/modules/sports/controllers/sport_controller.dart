@@ -86,7 +86,10 @@ class SportController extends GetxController {
         ? _allSportsCol.orderBy('date', descending: true).limit(500)
         : _col(uid).orderBy('date', descending: true).limit(200);
 
-    _sub = query.snapshots().listen(
+    // includeMetadataChanges: pendingSync reads hasPendingWrites, and a server
+    // acknowledgement changes only that metadata. Without it the stream never
+    // re-emits on ack and the "Syncing…" banner sticks.
+    _sub = query.snapshots(includeMetadataChanges: true).listen(
       (snap) {
         records.assignAll(snap.docs.map(SportRecordModel.fromFirestore));
         isLoading.value = false;

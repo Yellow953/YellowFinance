@@ -13,6 +13,9 @@ abstract class AppRoutes {
   static const String PORTFOLIO = '/portfolio';
   static const String ASSET_DETAIL = '/asset-detail';
   static const String REPORTS = '/reports';
+  static const String BUDGETS = '/budgets';
+  static const String DIARY = '/diary';
+  static const String DIARY_ENTRY = '/diary-entry';
   static const String AI_CHAT = '/ai-chat';
   static const String PROFILE = '/profile';
 }

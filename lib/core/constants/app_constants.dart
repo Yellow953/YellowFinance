@@ -16,6 +16,13 @@ abstract class AppConstants {
   static const String colSports = 'sports';
   static const String colTodos = 'todos';
   static const String colAllSports = 'all_sports';
+  static const String colBudgets = 'budgets';
+  static const String colGoals = 'goals';
+  static const String colDiary = 'diary';
+
+  /// Sentinel [BudgetModel.category] meaning "every category of this type".
+  /// Not a real category name, so it can never collide with one.
+  static const String budgetAllCategories = '__all__';
 
   // Transaction types
   static const String txnIncome = 'income';
@@ -59,6 +66,17 @@ abstract class AppConstants {
     'Gym',
     'Other',
   ];
+
+  // Input length limits.
+  //
+  // A Firestore document is capped at ~1 MB, and dictation can produce a lot of
+  // text quickly, so free-text fields are bounded rather than trusted. Enforced
+  // in the controllers as well as the fields — the field limit is a courtesy,
+  // the controller clamp is the guarantee.
+  static const int maxDiaryTitleLength = 120;
+  static const int maxDiaryBodyLength = 20000;
+  static const int maxGoalTitleLength = 60;
+  static const int maxBudgetNameLength = 40;
 
   // Inactivity sign-out duration
   static const int inactivityDays = 30;

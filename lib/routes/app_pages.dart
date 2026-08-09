@@ -7,6 +7,11 @@ import '../modules/auth/views/login_view.dart';
 import '../modules/auth/views/register_view.dart';
 import '../modules/auth/views/splash_view.dart';
 import '../modules/auth/views/verify_email_view.dart';
+import '../modules/budgets/bindings/budget_binding.dart';
+import '../modules/budgets/views/budgets_view.dart';
+import '../modules/diary/bindings/diary_binding.dart';
+import '../modules/diary/views/diary_entry_view.dart';
+import '../modules/diary/views/diary_view.dart';
 import '../modules/profile/views/profile_view.dart';
 import '../modules/home/bindings/home_binding.dart';
 import '../modules/home/views/home_view.dart';
@@ -90,6 +95,25 @@ abstract class AppPages {
       name: AppRoutes.REPORTS,
       page: () => const ReportsView(),
       binding: ReportsBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: AppRoutes.DIARY,
+      page: () => const DiaryView(),
+      binding: DiaryBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: AppRoutes.DIARY_ENTRY,
+      page: () => const DiaryEntryView(),
+      binding: DiaryBinding(),
+      middlewares: [AuthMiddleware()],
+      transition: Transition.cupertino,
+    ),
+    GetPage(
+      name: AppRoutes.BUDGETS,
+      page: () => const BudgetsView(),
+      binding: BudgetBinding(),
       middlewares: [AuthMiddleware()],
     ),
     GetPage(

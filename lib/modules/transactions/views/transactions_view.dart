@@ -5,6 +5,7 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../routes/app_routes.dart';
+import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/nav_bar.dart';
 import '../../../shared/widgets/transaction_tile.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -205,13 +206,24 @@ class _TransactionsViewState extends State<TransactionsView> {
                   }
                   final groups = _controller.filteredTransactionsByDay;
                   if (groups.isEmpty) {
-                    return Center(
-                      child: Text(
-                        _controller.transactions.isEmpty
-                            ? 'No transactions yet'
-                            : 'No matches',
-                        style: AppTextStyles.bodyMedium,
-                      ),
+                    // Two different situations: nothing recorded at all, where
+                    // the fix is adding one, versus a filter that excluded
+                    // everything, where offering "Add" would be the wrong nudge.
+                    final noneAtAll = _controller.transactions.isEmpty;
+                    return AppEmptyState(
+                      icon: noneAtAll
+                          ? Icons.receipt_long_outlined
+                          : Icons.search_off_rounded,
+                      title: noneAtAll
+                          ? 'No transactions yet'
+                          : 'Nothing matches',
+                      message: noneAtAll
+                          ? 'Record what comes in and what goes out to see it here.'
+                          : 'Try a different filter, category or date range.',
+                      actionLabel: noneAtAll ? 'Add transaction' : null,
+                      onAction: noneAtAll
+                          ? () => Get.toNamed(AppRoutes.ADD_TRANSACTION)
+                          : null,
                     );
                   }
                   return RefreshIndicator(

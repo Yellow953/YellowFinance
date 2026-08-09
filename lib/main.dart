@@ -8,6 +8,7 @@ import 'package:get/get.dart';
 
 import 'core/constants/app_constants.dart';
 import 'core/constants/app_colors.dart';
+import 'core/services/app_lock_service.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/connectivity_service.dart';
 import 'core/services/home_category_filter_service.dart';
@@ -19,6 +20,7 @@ import 'data/repositories/auth_repository.dart';
 import 'modules/auth/controllers/auth_controller.dart';
 import 'routes/app_pages.dart';
 import 'routes/app_routes.dart';
+import 'shared/widgets/app_lock_gate.dart';
 
 import 'firebase_options.dart';
 
@@ -55,6 +57,9 @@ Future<void> main() async {
   // Home category settings — awaited so HomeController never reads an
   // unloaded (i.e. "nothing excluded") filter on the first frame.
   await Get.putAsync(() => HomeCategoryFilterService().init(), permanent: true);
+  // Biometric lock — awaited so the very first frame already carries the lock
+  // screen when it's enabled, rather than flashing the app behind it.
+  await Get.putAsync(() => AppLockService().init(), permanent: true);
   Get.put(
     Dio(BaseOptions(connectTimeout: const Duration(seconds: 15))),
     permanent: true,
@@ -101,7 +106,9 @@ class YellowFinanceApp extends StatelessWidget {
       initialRoute: initialRoute,
       getPages: AppPages.routes,
       defaultTransition: Transition.fadeIn,
-      builder: (context, child) => _OfflineBannerOverlay(child: child!),
+      builder: (context, child) => AppLockGate(
+        child: _OfflineBannerOverlay(child: child!),
+      ),
     );
   }
 }
@@ -132,7 +139,9 @@ class _OfflineBannerOverlay extends StatelessWidget {
       } else if (offline) {
         icon = Icons.wifi_off_rounded;
         message = 'No internet connection';
-      } else if (pending > 0) {
+      } else if (sync.showSyncing.value) {
+        // Gated on showSyncing rather than pendingTotal so a write that lands
+        // quickly — the normal case — never flashes the bar.
         icon = Icons.cloud_upload_rounded;
         message = 'Syncing $changes…';
       } else {

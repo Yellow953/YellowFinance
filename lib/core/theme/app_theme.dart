@@ -4,6 +4,26 @@ import '../constants/app_text_styles.dart';
 
 /// App-wide Material theme.
 abstract class AppTheme {
+  /// Decoration for a text field that should carry no chrome of its own —
+  /// one written directly on the page, or one already sitting inside a
+  /// container that draws its own box.
+  ///
+  /// [light] sets `filled: true` along with `enabledBorder` / `focusedBorder`,
+  /// and Flutter prefers those state-specific borders over the base `border`.
+  /// Clearing `border` alone therefore leaves the fill and the outline behind,
+  /// so every variant has to be overridden explicitly.
+  static const InputDecoration bareInput = InputDecoration(
+    filled: false,
+    border: InputBorder.none,
+    enabledBorder: InputBorder.none,
+    focusedBorder: InputBorder.none,
+    errorBorder: InputBorder.none,
+    focusedErrorBorder: InputBorder.none,
+    disabledBorder: InputBorder.none,
+    isDense: true,
+    contentPadding: EdgeInsets.zero,
+  );
+
   static ThemeData get light => ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: AppColors.background,

@@ -35,6 +35,12 @@
 		<string>????</string>
 		<key>CFBundleVersion</key>
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
+		<key>NSFaceIDUsageDescription</key>
+		<string>YellowFinance uses Face ID to unlock the app so only you can see your finances.</string>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>YellowFinance uses the microphone so you can dictate diary entries instead of typing them.</string>
+		<key>NSSpeechRecognitionUsageDescription</key>
+		<string>YellowFinance converts your speech to text so you can dictate diary entries.</string>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
 		<key>UIApplicationSceneManifest</key>

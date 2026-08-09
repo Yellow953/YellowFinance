@@ -3,9 +3,11 @@ import 'package:get/get.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/services/app_lock_service.dart';
 import '../../../core/services/home_category_filter_service.dart';
 import '../../../core/services/nofap_notification_service.dart';
 import '../../../core/services/sport_reminder_service.dart';
+import '../../../core/utils/app_snackbar.dart';
 import '../../../core/utils/validators.dart';
 import '../../../modules/auth/controllers/auth_controller.dart';
 import '../../../modules/home/controllers/home_controller.dart';
@@ -171,6 +173,8 @@ class _ProfileViewState extends State<ProfileView> {
                             value: _controller.user.value?.email ?? '—',
                           )),
                       const SizedBox(height: 32),
+                      const _SecuritySection(),
+                      const SizedBox(height: 32),
                       const _HomeCategoriesSection(),
                       const SizedBox(height: 32),
                       const _SportReminderSection(),
@@ -201,6 +205,127 @@ class _ProfileViewState extends State<ProfileView> {
         '', 'January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'
       ][m];
+}
+
+// ── Security section ──────────────────────────────────────────────────────
+
+/// Biometric app lock toggle.
+class _SecuritySection extends StatefulWidget {
+  const _SecuritySection();
+
+  @override
+  State<_SecuritySection> createState() => _SecuritySectionState();
+}
+
+class _SecuritySectionState extends State<_SecuritySection> {
+  final _lock = Get.find<AppLockService>();
+
+  /// Null until the platform check resolves — the toggle stays disabled until
+  /// then so it can't be flipped on a device that can't honour it.
+  bool? _supported;
+  String _label = 'Biometrics';
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final supported = await _lock.isDeviceSupported();
+    final label = await _lock.biometricLabel();
+    if (!mounted) return;
+    setState(() {
+      _supported = supported;
+      _label = label;
+    });
+  }
+
+  Future<void> _toggle(bool value) async {
+    setState(() => _busy = true);
+    final changed = await _lock.setEnabled(value);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (!changed) {
+      // Enabling requires a successful prompt; a cancel leaves it off.
+      AppSnackbar.error('Could not verify it\'s you. App lock unchanged.');
+      return;
+    }
+    AppSnackbar.success(
+      value ? 'App lock is on.' : 'App lock is off.',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final supported = _supported;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Security', style: AppTextStyles.titleMedium),
+        const SizedBox(height: 16),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.dark,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.fingerprint_rounded,
+                      size: 20, color: AppColors.primary),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'App Lock',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        supported == false
+                            ? 'No biometrics or passcode set on this device'
+                            : 'Require $_label to open ${AppConstants.appName}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Obx(() => Switch.adaptive(
+                      value: _lock.isEnabled.value,
+                      onChanged:
+                          (supported ?? false) && !_busy ? _toggle : null,
+                      activeThumbColor: AppColors.primary,
+                      activeTrackColor:
+                          AppColors.primary.withValues(alpha: 0.4),
+                    )),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 // ── Edit name section ─────────────────────────────────────────────────────

@@ -105,7 +105,10 @@ class TodoController extends GetxController {
     isLoading.value = true;
     _sub = _col(uid)
         .orderBy('createdAt', descending: true)
-        .snapshots()
+        // includeMetadataChanges: pendingSync reads hasPendingWrites, and a
+        // server acknowledgement changes only that metadata. Without it the
+        // stream never re-emits on ack and the "Syncing…" banner sticks.
+        .snapshots(includeMetadataChanges: true)
         .listen(
       (snap) {
         todos.assignAll(snap.docs.map(TodoModel.fromFirestore));

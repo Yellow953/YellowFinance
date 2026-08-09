@@ -10,6 +10,7 @@ import 'core/constants/app_constants.dart';
 import 'core/constants/app_colors.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/connectivity_service.dart';
+import 'core/services/home_category_filter_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/sync_service.dart';
 import 'core/theme/app_theme.dart';
@@ -51,6 +52,9 @@ Future<void> main() async {
   Get.put(SyncService(), permanent: true);
   Get.put(AuthService(), permanent: true);
   Get.put(FirestoreProvider(), permanent: true);
+  // Home category settings — awaited so HomeController never reads an
+  // unloaded (i.e. "nothing excluded") filter on the first frame.
+  await Get.putAsync(() => HomeCategoryFilterService().init(), permanent: true);
   Get.put(
     Dio(BaseOptions(connectTimeout: const Duration(seconds: 15))),
     permanent: true,

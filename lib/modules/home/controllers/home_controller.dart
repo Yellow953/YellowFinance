@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/services/home_category_filter_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/sport_reminder_service.dart';
 import '../../../data/models/sport_record_model.dart';
@@ -12,8 +13,15 @@ import '../../../modules/auth/controllers/auth_controller.dart';
 /// Drives the Home screen: balance summary + recent transactions.
 class HomeController extends GetxController {
   final TransactionRepository _txnRepo;
+  final HomeCategoryFilterService _categoryFilter;
 
+  /// Every transaction, unfiltered.
   final RxList<TransactionModel> transactions = <TransactionModel>[].obs;
+
+  /// Transactions in the categories the user kept enabled for Home. Everything
+  /// on this screen — totals and the recent list — is derived from these.
+  final RxList<TransactionModel> visibleTransactions = <TransactionModel>[].obs;
+
   final RxList<SportRecordModel> sportRecords = <SportRecordModel>[].obs;
   final RxInt totalBalanceCents = 0.obs;
   final RxInt totalIncomeCents = 0.obs;
@@ -24,13 +32,19 @@ class HomeController extends GetxController {
   StreamSubscription<List<TransactionModel>>? _txnSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _sportSub;
 
-  HomeController({required TransactionRepository txnRepo})
-      : _txnRepo = txnRepo;
+  HomeController({
+    required TransactionRepository txnRepo,
+    required HomeCategoryFilterService categoryFilter,
+  })  : _txnRepo = txnRepo,
+        _categoryFilter = categoryFilter;
 
   @override
   void onInit() {
     super.onInit();
     _handlePendingNotification();
+    // Re-derive as soon as the category settings change in Profile.
+    ever(_categoryFilter.excludedIncome, (_) => _applyCategoryFilter());
+    ever(_categoryFilter.excludedExpense, (_) => _applyCategoryFilter());
     final authCtrl = Get.find<AuthController>();
     if (authCtrl.user.value != null) {
       _subscribeToTransactions();
@@ -68,11 +82,19 @@ class HomeController extends GetxController {
     _txnSub = _txnRepo.watchTransactions(uid).listen(
       (txns) {
         transactions.assignAll(txns);
-        _recalculate(txns);
+        _applyCategoryFilter();
         isLoading.value = false;
       },
       onError: (_) => isLoading.value = false,
     );
+  }
+
+  /// Drops transactions in categories the user excluded from Home, then
+  /// refreshes the totals from what's left.
+  void _applyCategoryFilter() {
+    final visible = transactions.where(_categoryFilter.includes).toList();
+    visibleTransactions.assignAll(visible);
+    _recalculate(visible);
   }
 
   void _recalculate(List<TransactionModel> txns) {
@@ -167,7 +189,7 @@ class HomeController extends GetxController {
   }
 
   List<TransactionModel> get recentTransactions =>
-      transactions.take(5).toList();
+      visibleTransactions.take(5).toList();
 
   List<SportRecordModel> get recentSportRecords =>
       sportRecords.take(5).toList();

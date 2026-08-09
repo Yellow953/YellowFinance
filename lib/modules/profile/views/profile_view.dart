@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/services/home_category_filter_service.dart';
 import '../../../core/services/nofap_notification_service.dart';
 import '../../../core/services/sport_reminder_service.dart';
 import '../../../core/utils/validators.dart';
@@ -169,6 +171,8 @@ class _ProfileViewState extends State<ProfileView> {
                             value: _controller.user.value?.email ?? '—',
                           )),
                       const SizedBox(height: 32),
+                      const _HomeCategoriesSection(),
+                      const SizedBox(height: 32),
                       const _SportReminderSection(),
                       const SizedBox(height: 32),
                       const _NofapSection(),
@@ -254,6 +258,226 @@ class _EditNameSectionState extends State<_EditNameSection> {
                 },
               )),
         ],
+      ),
+    );
+  }
+}
+
+// ── Home categories section ───────────────────────────────────────────────
+
+/// Lets the user choose which income / expense categories feed the Home
+/// screen. Deselected categories are skipped in the Home totals and hidden
+/// from its recent transactions list — they stay untouched everywhere else.
+class _HomeCategoriesSection extends StatelessWidget {
+  const _HomeCategoriesSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final filter = Get.find<HomeCategoryFilterService>();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Home Screen', style: AppTextStyles.titleMedium),
+        const SizedBox(height: 6),
+        const Text(
+          'Categories counted in your Home totals.',
+          style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            children: [
+              _CategoryGroup(
+                title: 'INCOME',
+                icon: Icons.arrow_upward_rounded,
+                accent: AppColors.success,
+                categories: AppConstants.incomeCategories,
+                income: true,
+                filter: filter,
+              ),
+              const Divider(height: 1, color: AppColors.border),
+              _CategoryGroup(
+                title: 'EXPENSES',
+                icon: Icons.arrow_downward_rounded,
+                accent: AppColors.danger,
+                categories: AppConstants.expenseCategories,
+                income: false,
+                filter: filter,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CategoryGroup extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color accent;
+  final List<String> categories;
+  final bool income;
+  final HomeCategoryFilterService filter;
+
+  const _CategoryGroup({
+    required this.title,
+    required this.icon,
+    required this.accent,
+    required this.categories,
+    required this.income,
+    required this.filter,
+  });
+
+  bool _isOn(String category) =>
+      filter.isCategoryIncluded(income: income, category: category);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Icon(icon, size: 13, color: accent),
+              ),
+              const SizedBox(width: 10),
+              Text(title, style: AppTextStyles.labelSmall),
+              const Spacer(),
+              // Tap the counter to flip the whole group on/off — 7 taps to
+              // isolate one category is a chore otherwise.
+              Obx(() {
+                final on = categories.where(_isOn).length;
+                final allOn = on == categories.length;
+                return GestureDetector(
+                  onTap: () => filter.setSelection(
+                    income: income,
+                    categories: categories,
+                    // Clearing leaves the first category on, so Home never
+                    // shows a total with nothing behind it.
+                    included: allOn
+                        ? {categories.first}
+                        : categories.toSet(),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 4, vertical: 2),
+                    child: Text(
+                      allOn ? 'All' : '$on of ${categories.length}',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: allOn
+                            ? AppColors.textMuted
+                            : AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Obx(() => Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: categories.map((category) {
+                  return _CategoryToggleChip(
+                    label: category,
+                    selected: _isOn(category),
+                    onTap: () => filter.setCategoryIncluded(
+                      income: income,
+                      category: category,
+                      included: !_isOn(category),
+                    ),
+                  );
+                }).toList(),
+              )),
+        ],
+      ),
+    );
+  }
+}
+
+/// Toggle chip. "On" is the resting state — a soft yellow tint rather than a
+/// solid fill, so a full card doesn't turn into a wall of accent colour. "Off"
+/// recedes into the page background.
+class _CategoryToggleChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _CategoryToggleChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.fromLTRB(10, 7, 13, 7),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.primary.withValues(alpha: 0.12)
+              : AppColors.background,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected
+                ? AppColors.primary.withValues(alpha: 0.45)
+                : AppColors.border,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Fixed-width slot so chips don't resize when toggled.
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: selected
+                  ? Container(
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.check_rounded,
+                          size: 11, color: AppColors.dark),
+                    )
+                  : const Center(
+                      child: Icon(Icons.circle_outlined,
+                          size: 13, color: AppColors.textMuted),
+                    ),
+            ),
+            const SizedBox(width: 7),
+            Text(
+              label,
+              style: AppTextStyles.labelMedium.copyWith(
+                color:
+                    selected ? AppColors.textPrimary : AppColors.textMuted,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

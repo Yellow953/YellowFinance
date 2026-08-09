@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import '../../../core/services/home_category_filter_service.dart';
 import '../../../data/providers/firestore_provider.dart';
 import '../../../data/repositories/transaction_repository.dart';
 import '../controllers/home_controller.dart';
@@ -12,6 +13,7 @@ class HomeBinding extends Bindings {
         txnRepo: TransactionRepository(
           firestore: Get.find<FirestoreProvider>(),
         ),
+        categoryFilter: Get.find<HomeCategoryFilterService>(),
       ),
     );
   }

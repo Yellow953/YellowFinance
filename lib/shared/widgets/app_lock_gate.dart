@@ -94,6 +94,59 @@ class _PrivacyShield extends StatelessWidget {
   }
 }
 
+/// Privacy toggle offered on the lock screen itself.
+///
+/// Cancelling the biometric prompt leaves the user stuck on the lock screen, so
+/// this stays reachable there — they can decide whether balances are on screen
+/// *before* unlocking hands the app back. Writes the same per-account
+/// preference the in-app toggles use, so the choice is already in effect.
+class _HideBalancesPill extends StatelessWidget {
+  const _HideBalancesPill();
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = Get.find<AuthController>();
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Obx(() {
+        final hidden = auth.hideBalances.value;
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: auth.toggleHideBalances,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              color: AppColors.surface.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  hidden
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  size: 16,
+                  color: AppColors.textMuted,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  hidden ? 'Balances hidden' : 'Balances shown',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
 // ── Lock screen ─────────────────────────────────────────────────────────────
 
 class _LockScreen extends StatefulWidget {
@@ -147,6 +200,7 @@ class _LockScreenState extends State<_LockScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              const _HideBalancesPill(),
               const Spacer(),
               Container(
                 width: 72,

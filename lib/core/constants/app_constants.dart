@@ -20,6 +20,11 @@ abstract class AppConstants {
   static const String colGoals = 'goals';
   static const String colDiary = 'diary';
 
+  /// Set at sign-out, read and cleared in `main()`: Firestore's on-disk cache
+  /// can only be wiped before the client starts, so the request has to survive
+  /// until the next launch.
+  static const String prefPendingCacheClear = 'pending_firestore_cache_clear';
+
   /// Sentinel [BudgetModel.category] meaning "every category of this type".
   /// Not a real category name, so it can never collide with one.
   static const String budgetAllCategories = '__all__';

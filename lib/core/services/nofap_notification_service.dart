@@ -4,6 +4,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart' as tz;
 
+import 'user_prefs.dart';
+
 /// Daily No-Fap motivational reminders — scheduled once, repeat every 24 h.
 abstract class NofapNotificationService {
   static const _prefEnabled = 'nofap_enabled';
@@ -42,36 +44,55 @@ abstract class NofapNotificationService {
 
   // ── Persistence ─────────────────────────────────────────────────────────
 
+  // Settings belong to the signed-in account, not the device — see [UserPrefs].
+  // A null key means signed out: reads fall back to defaults and writes drop.
+
   static Future<bool> isEnabled() async {
+    final key = UserPrefs.keyFor(_prefEnabled);
+    if (key == null) return false;
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_prefEnabled) ?? false;
+    return prefs.getBool(key) ?? false;
   }
 
   static Future<int> savedHour() async {
+    final key = UserPrefs.keyFor(_prefHour);
+    if (key == null) return 23;
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_prefHour) ?? 23; // default 11 PM
+    return prefs.getInt(key) ?? 23; // default 11 PM
   }
 
   static Future<int> savedMinute() async {
+    final key = UserPrefs.keyFor(_prefMinute);
+    if (key == null) return 30;
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_prefMinute) ?? 30; // default :30
+    return prefs.getInt(key) ?? 30; // default :30
   }
 
   // ── Enable / disable ─────────────────────────────────────────────────────
 
   static Future<void> enable({required int hour, required int minute}) async {
+    final enabledKey = UserPrefs.keyFor(_prefEnabled);
+    final hourKey = UserPrefs.keyFor(_prefHour);
+    final minuteKey = UserPrefs.keyFor(_prefMinute);
+    if (enabledKey == null || hourKey == null || minuteKey == null) return;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_prefEnabled, true);
-    await prefs.setInt(_prefHour, hour);
-    await prefs.setInt(_prefMinute, minute);
+    await prefs.setBool(enabledKey, true);
+    await prefs.setInt(hourKey, hour);
+    await prefs.setInt(minuteKey, minute);
     await _schedule(hour: hour, minute: minute);
   }
 
   static Future<void> disable() async {
+    final key = UserPrefs.keyFor(_prefEnabled);
+    if (key == null) return;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_prefEnabled, false);
+    await prefs.setBool(key, false);
     await _cancelAll();
   }
+
+  /// Cancels every scheduled reminder without touching the stored setting.
+  /// Used on sign-out so one account's reminders don't fire for the next.
+  static Future<void> cancelAll() => _cancelAll();
 
   static Future<void> rescheduleIfEnabled() async {
     if (!await isEnabled()) return;

@@ -1,8 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/home_category_filter_service.dart';
+import '../../../core/services/nofap_notification_service.dart';
+import '../../../core/services/sport_reminder_service.dart';
+import '../../../core/services/sync_service.dart';
+import '../../../core/services/user_prefs.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../routes/app_routes.dart';
@@ -25,18 +31,50 @@ class AuthController extends GetxController {
   void onReady() {
     super.onReady();
     _listenToAuthChanges();
+    // Device-local settings are per-account too. Driving them from `user` keeps
+    // every path — sign-in, sign-out, account switch — going through one place.
+    ever<UserModel?>(user, (u) => _applyUserScopedPrefs(u?.uid));
     _loadHidePreference();
   }
 
+  /// Re-points device-local settings at [uid], or tears them down when null.
+  Future<void> _applyUserScopedPrefs(String? uid) async {
+    // Synchronous and first: everything below reads through this binding.
+    UserPrefs.bind(uid);
+
+    if (uid == null) {
+      // The stored values survive — only what is live on the device stops.
+      await NofapNotificationService.cancelAll();
+      await SportReminderService.cancelAll();
+      Get.find<HomeCategoryFilterService>().clear();
+      hideBalances.value = false;
+      return;
+    }
+
+    await UserPrefs.migrateLegacyKeys();
+    await Get.find<HomeCategoryFilterService>().reload();
+    await _loadHidePreference();
+    // Reminders were cancelled on the previous sign-out; put this account's
+    // back if it has them switched on.
+    await NofapNotificationService.rescheduleIfEnabled();
+  }
+
   Future<void> _loadHidePreference() async {
+    final key = UserPrefs.keyFor(_hideKey);
+    if (key == null) {
+      hideBalances.value = false;
+      return;
+    }
     _prefs ??= await SharedPreferences.getInstance();
-    hideBalances.value = _prefs!.getBool(_hideKey) ?? false;
+    hideBalances.value = _prefs!.getBool(key) ?? false;
   }
 
   Future<void> toggleHideBalances() async {
+    final key = UserPrefs.keyFor(_hideKey);
+    if (key == null) return;
     hideBalances.value = !hideBalances.value;
     _prefs ??= await SharedPreferences.getInstance();
-    await _prefs!.setBool(_hideKey, hideBalances.value);
+    await _prefs!.setBool(key, hideBalances.value);
   }
 
   void _listenToAuthChanges() {
@@ -215,7 +253,47 @@ class AuthController extends GetxController {
 
   /// Signs out the current user.
   Future<void> signOut() async {
+    // Null the user *before* Firebase tears the session down, and synchronously.
+    // Every auth-scoped controller is watching this value, so this is what
+    // cancels their listeners and clears their lists — waiting for
+    // `authStateChanges` to do it leaves a window where the previous account's
+    // data is still on screen and still being streamed.
+    user.value = null;
+
     await _authRepo.signOut();
+
+    // The listener normally handles this; doing it here keeps teardown ordered
+    // (routes gone before the instances they used are dropped). Re-entry is
+    // guarded by the currentRoute check in the listener.
+    if (Get.currentRoute != AppRoutes.LOGIN) {
+      await Get.offAllNamed(AppRoutes.LOGIN);
+    }
+
+    // Drop the controller instances themselves. `force: false` leaves the
+    // permanent services — and this AuthController — registered, so the login
+    // screen still works. Without this, a controller whose route disposal was
+    // missed survives as a live object holding the previous account's data.
+    await Get.deleteAll();
+
+    await _flagCacheClear();
+  }
+
+  /// Asks the next launch to wipe Firestore's on-disk cache.
+  ///
+  /// Firestore only allows `clearPersistence()` before the client starts, so it
+  /// cannot run here — it is deferred to `main()`. That is safe now that
+  /// nothing listens on the signed-out account's paths: the stale cache is data
+  /// at rest, not something the app can read back into a session. It matters
+  /// because cached reads bypass security rules entirely, so anything left on
+  /// disk would be served without an auth check if it were ever queried.
+  ///
+  /// Skipped when writes are still queued — clearing persistence discards
+  /// Firestore's pending-write queue, which would silently drop changes made
+  /// offline.
+  Future<void> _flagCacheClear() async {
+    if (Get.find<SyncService>().pendingTotal > 0) return;
+    _prefs ??= await SharedPreferences.getInstance();
+    await _prefs!.setBool(AppConstants.prefPendingCacheClear, true);
   }
 
   String _friendlyError(Object e) {

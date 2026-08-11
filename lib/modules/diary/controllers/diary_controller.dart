@@ -3,17 +3,17 @@ import 'dart:async';
 import 'package:get/get.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/mixins/auth_scoped_controller.dart';
 import '../../../core/services/sync_service.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../data/models/diary_entry_model.dart';
 import '../../../data/repositories/diary_repository.dart';
-import '../../auth/controllers/auth_controller.dart';
 
 /// A day's worth of entries, for the grouped list.
 typedef DiaryDay = ({DateTime date, List<DiaryEntryModel> entries});
 
 /// Drives the diary list: streaming, search and CRUD.
-class DiaryController extends GetxController {
+class DiaryController extends GetxController with AuthScopedController {
   final DiaryRepository _repo;
 
   final RxList<DiaryEntryModel> entries = <DiaryEntryModel>[].obs;
@@ -73,24 +73,23 @@ class DiaryController extends GetxController {
     ever(entries, (List<DiaryEntryModel> list) {
       _sync.reportPending('diary', list.where((e) => e.pendingSync).length);
     });
-    final authCtrl = Get.find<AuthController>();
-    if (authCtrl.user.value != null) {
-      _subscribe();
-    } else {
-      ever(authCtrl.user, (user) {
-        if (user != null && _sub == null) _subscribe();
-      });
-    }
+    bindToAuth();
   }
 
   @override
-  void onClose() {
+  void onUserBound(String uid) => _subscribe();
+
+  @override
+  void onUserUnbound() {
     _sub?.cancel();
+    _sub = null;
+    entries.clear();
+    clearFilters();
+    isLoading.value = false;
     _sync.reportPending('diary', 0);
-    super.onClose();
   }
 
-  String? get _uid => Get.find<AuthController>().user.value?.uid;
+  String? get _uid => boundUid;
 
   SyncService get _sync => Get.find<SyncService>();
 

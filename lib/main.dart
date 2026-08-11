@@ -2,9 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/constants/app_constants.dart';
 import 'core/constants/app_colors.dart';
@@ -14,6 +16,7 @@ import 'core/services/connectivity_service.dart';
 import 'core/services/home_category_filter_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/sync_service.dart';
+import 'core/services/user_prefs.dart';
 import 'core/theme/app_theme.dart';
 import 'data/providers/firestore_provider.dart';
 import 'data/repositories/auth_repository.dart';
@@ -41,6 +44,11 @@ Future<void> main() async {
   // Initialize local notification scheduler.
   await NotificationService.init();
 
+  // A sign-out since the last launch asked for the cache to be wiped. This has
+  // to happen here: clearPersistence() is only legal before the Firestore
+  // client starts, which rules out doing it during the sign-out itself.
+  await _clearFirestoreCacheIfRequested();
+
   // Enable Firestore offline persistence so reads work without internet.
   // Cap cache at 50 MB to avoid unbounded disk/memory growth.
   FirebaseFirestore.instance.settings = const Settings(
@@ -54,6 +62,13 @@ Future<void> main() async {
   Get.put(SyncService(), permanent: true);
   Get.put(AuthService(), permanent: true);
   Get.put(FirestoreProvider(), permanent: true);
+  // Device-local settings are stored per account. Firebase's cached session
+  // gives the uid synchronously, well before the Firestore profile fetch
+  // resolves — binding here means the settings loaded below are already the
+  // right account's, with no first-frame flash of another user's filters.
+  UserPrefs.bind(FirebaseAuth.instance.currentUser?.uid);
+  await UserPrefs.migrateLegacyKeys();
+
   // Home category settings — awaited so HomeController never reads an
   // unloaded (i.e. "nothing excluded") filter on the first frame.
   await Get.putAsync(() => HomeCategoryFilterService().init(), permanent: true);
@@ -90,6 +105,24 @@ Future<void> main() async {
   }
 
   runApp(YellowFinanceApp(initialRoute: initialRoute));
+}
+
+/// Wipes Firestore's on-disk cache if the last sign-out asked for it.
+///
+/// Documents cached under the previous account stay readable after sign-out —
+/// cache reads never consult security rules — so the disk is cleared before the
+/// next session can touch it. Failures are swallowed: a cache that could not be
+/// cleared is not a reason to block startup, and the flag stays set so the next
+/// launch tries again.
+Future<void> _clearFirestoreCacheIfRequested() async {
+  final prefs = await SharedPreferences.getInstance();
+  if (!(prefs.getBool(AppConstants.prefPendingCacheClear) ?? false)) return;
+  try {
+    await FirebaseFirestore.instance.clearPersistence();
+    await prefs.remove(AppConstants.prefPendingCacheClear);
+  } catch (e) {
+    if (kDebugMode) debugPrint('Firestore cache clear failed: $e');
+  }
 }
 
 class YellowFinanceApp extends StatelessWidget {

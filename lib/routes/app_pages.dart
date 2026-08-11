@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import '../modules/ai/bindings/ai_binding.dart';
 import '../modules/ai/views/ai_chat_view.dart';
@@ -137,5 +139,32 @@ abstract class AppPages {
   ];
 }
 
-/// Placeholder middleware — full auth guard is handled by AuthController stream.
-class AuthMiddleware extends GetMiddleware {}
+/// Blocks protected routes for anyone not signed in and verified.
+///
+/// [AuthController]'s `authStateChanges` listener redirects too, but reactively:
+/// it fires *after* a route has been built, which is a frame too late for a
+/// screen that reads user data on the way up. This runs before the page or its
+/// binding is constructed, so an unauthenticated navigation never reaches a
+/// controller at all.
+///
+/// The check reads Firebase directly rather than `AuthController.user`, which
+/// is populated asynchronously from a Firestore profile fetch. On cold start
+/// `main()` routes straight to Home from Firebase's cached session while that
+/// fetch is still in flight — guarding on the profile would bounce a legitimate
+/// session to the login screen every launch.
+class AuthMiddleware extends GetMiddleware {
+  @override
+  RouteSettings? redirect(String? route) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const RouteSettings(name: AppRoutes.LOGIN);
+    }
+    // Google accounts arrive verified; only email/password sign-ups are gated.
+    final isVerified = user.emailVerified ||
+        user.providerData.any((p) => p.providerId == 'google.com');
+    if (!isVerified) {
+      return const RouteSettings(name: AppRoutes.VERIFY_EMAIL);
+    }
+    return null;
+  }
+}

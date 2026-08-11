@@ -1,0 +1,112 @@
+rules_version = '2';
+
+// YellowFinance Firestore rules.
+//
+// Two shapes of data live here:
+//   * `users/{uid}/…` — private per-account data. Only the owner touches it.
+//   * `all_sports` and `market_prices` — deliberately shared reads.
+//
+// Rules are the only enforcement that cannot be bypassed. In particular the
+// Flutter client reads through Firestore's offline cache, and cached reads are
+// served without consulting these rules at all — so a client-side path bug can
+// surface data that a server read would have refused. Treat everything here as
+// the real boundary and the app as a convenience layer on top of it.
+//
+// Note that rules are permissive-union: if any matching rule grants access, it
+// is granted. A narrower `allow ... : if false` below a wildcard grant does not
+// claw anything back, which is why the user subtree is enumerated rather than
+// matched with `{document=**}`.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ── User profile ─────────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // ── Private per-user collections ─────────────────────────────────────────
+    // Enumerated deliberately. `ai_usage` is *not* in the list: it holds the
+    // daily Gemini call counter that `analyzeFinances` enforces its rate limit
+    // against, and a client able to write it could reset its own limit and run
+    // up the API bill. The function writes it through the Admin SDK, which
+    // bypasses rules, so denying the client costs nothing.
+    //
+    // Adding a feature collection to the app means adding it here first —
+    // anything not listed is denied.
+    match /users/{userId}/{collection}/{docId} {
+      allow read, write: if isOwner(userId)
+                         && collection in [
+                              'transactions',
+                              'portfolio',
+                              'budgets',
+                              'goals',
+                              'diary',
+                              'todos',
+                              'sports'
+                            ];
+    }
+
+    // The rate-limit counter, readable by its owner so the app can show usage,
+    // never writable from a client.
+    match /users/{userId}/ai_usage/{day} {
+      allow read: if isOwner(userId);
+      allow write: if false;
+    }
+
+    // ── Shared sports leaderboard ────────────────────────────────────────────
+    // Every sport record is written twice: once privately under the user, once
+    // here so the "all users" toggle can show everyone's activity. Readable by
+    // any signed-in user by design; writable only for your own rows.
+    //
+    // `userId` is pinned to the caller on create and frozen on update, so a
+    // record cannot be filed under — or reassigned to — somebody else.
+    match /all_sports/{recordId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.keys().hasAll(
+                         ['userId', 'date', 'category', 'createdAt'])
+                    && request.resource.data.category is string
+                    && request.resource.data.category.size() <= 100
+                    && request.resource.data.description is string
+                    && request.resource.data.description.size() <= 1000
+                    && request.resource.data.userName is string
+                    && request.resource.data.userName.size() <= 200;
+
+      allow update: if isSignedIn()
+                    && resource.data.userId == request.auth.uid
+                    && request.resource.data.userId == resource.data.userId;
+
+      allow delete: if isSignedIn()
+                    && resource.data.userId == request.auth.uid;
+    }
+
+    // ── Market prices ────────────────────────────────────────────────────────
+    // Written exclusively by the scheduled `fetchPrices` function through the
+    // Admin SDK, which bypasses these rules. Clients only ever read, so every
+    // client write is denied — including from a compromised app.
+    match /market_prices/{symbol} {
+      allow read: if isSignedIn();
+      allow write: if false;
+
+      match /history/{entryId} {
+        allow read: if isSignedIn();
+        allow write: if false;
+      }
+    }
+
+    // Anything not matched above is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

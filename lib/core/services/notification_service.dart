@@ -176,6 +176,12 @@ abstract class NotificationService {
     ]);
   }
 
+  /// Cancels every scheduled task notification.
+  ///
+  /// Used on sign-out: reminders are scheduled from one account's tasks and
+  /// must not keep firing for whoever signs in next on this device.
+  static Future<void> cancelAll() => _plugin.cancelAll();
+
   /// Called once on app start to re-register any notifications that may have
   /// been lost (e.g. if the user cleared app data). The plugin's boot receiver
   /// normally handles rescheduling after a reboot, so this is a safety net.

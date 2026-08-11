@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models/transaction_model.dart';
+import 'user_prefs.dart';
 
 /// Which income / expense categories count toward the Home screen figures.
 ///
@@ -23,12 +24,36 @@ class HomeCategoryFilterService extends GetxService {
 
   /// Loads persisted selections. Register with `Get.putAsync`.
   Future<HomeCategoryFilterService> init() async {
+    await reload();
+    return this;
+  }
+
+  /// Re-reads the bound account's selections, replacing whatever is held.
+  ///
+  /// Called on sign-in as well as at startup: this service is permanent, so it
+  /// outlives the session that loaded it and has to be re-pointed when the
+  /// account changes.
+  Future<void> reload() async {
+    final incomeKey = UserPrefs.keyFor(_prefIncomeExcluded);
+    final expenseKey = UserPrefs.keyFor(_prefExpenseExcluded);
+    if (incomeKey == null || expenseKey == null) {
+      clear();
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
     excludedIncome
-        .addAll(prefs.getStringList(_prefIncomeExcluded) ?? const <String>[]);
+      ..clear()
+      ..addAll(prefs.getStringList(incomeKey) ?? const <String>[]);
     excludedExpense
-        .addAll(prefs.getStringList(_prefExpenseExcluded) ?? const <String>[]);
-    return this;
+      ..clear()
+      ..addAll(prefs.getStringList(expenseKey) ?? const <String>[]);
+  }
+
+  /// Drops the in-memory selections on sign-out. The stored values stay put so
+  /// the account gets them back on its next sign-in.
+  void clear() {
+    excludedIncome.clear();
+    excludedExpense.clear();
   }
 
   /// Whether [txn] should be counted and listed on Home.
@@ -74,9 +99,13 @@ class HomeCategoryFilterService extends GetxService {
   }
 
   Future<void> _persist(bool income) async {
+    final key = UserPrefs.keyFor(
+      income ? _prefIncomeExcluded : _prefExpenseExcluded,
+    );
+    if (key == null) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(
-      income ? _prefIncomeExcluded : _prefExpenseExcluded,
+      key,
       (income ? excludedIncome : excludedExpense).toList(),
     );
   }

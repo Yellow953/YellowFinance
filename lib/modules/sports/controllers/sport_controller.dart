@@ -2,13 +2,14 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/mixins/auth_scoped_controller.dart';
 import '../../../core/services/sync_service.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../data/models/sport_record_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 
 /// Manages the sports records list and add-record form state.
-class SportController extends GetxController {
+class SportController extends GetxController with AuthScopedController {
   final RxList<SportRecordModel> records = <SportRecordModel>[].obs;
   final RxBool isLoading = false.obs;
   final RxBool isSaving = false.obs;
@@ -35,7 +36,6 @@ class SportController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _subscribe();
     // Streak only depends on own records — skip recomputing it on filter/month changes.
     ever(records, (List<SportRecordModel> list) {
       _recompute();
@@ -50,16 +50,27 @@ class SportController extends GetxController {
       records.clear();
       _subscribe();
     });
+    bindToAuth();
   }
 
   @override
-  void onClose() {
+  void onUserBound(String uid) => _subscribe();
+
+  @override
+  void onUserUnbound() {
     _sub?.cancel();
+    _sub = null;
+    records.clear();
+    // The global leaderboard is shared, but the toggle is a per-session view
+    // choice — the next account starts on its own records.
+    showAllUsers.value = false;
+    filterCategory.value = 'All';
+    streakDays.value = 0;
+    isLoading.value = false;
     _sync.reportPending('sports', 0);
-    super.onClose();
   }
 
-  String? get _uid => Get.find<AuthController>().user.value?.uid;
+  String? get _uid => boundUid;
 
   SyncService get _sync => Get.find<SyncService>();
 

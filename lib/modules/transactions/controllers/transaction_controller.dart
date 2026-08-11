@@ -1,15 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/mixins/auth_scoped_controller.dart';
 import '../../../core/services/connectivity_service.dart';
 import '../../../core/services/sync_service.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/repositories/transaction_repository.dart';
-import '../../auth/controllers/auth_controller.dart';
 
 /// Manages the full transactions list and add-transaction form.
-class TransactionController extends GetxController {
+class TransactionController extends GetxController with AuthScopedController {
   final TransactionRepository _txnRepo;
 
   final RxList<TransactionModel> transactions = <TransactionModel>[].obs;
@@ -81,14 +81,30 @@ class TransactionController extends GetxController {
         _fetchTotals();
       }
     });
+    bindToAuth();
+  }
+
+  @override
+  void onUserBound(String uid) {
     _fetchPage(reset: true);
     _fetchTotals();
   }
 
   @override
-  void onClose() {
+  void onUserUnbound() {
+    transactions.clear();
+    _lastDoc = null;
+    hasMore.value = true;
+    filterPeriod.value = 'This Month';
+    filterCategory.value = 'All';
+    customStart.value = null;
+    customEnd.value = null;
+    filteredIncomeCents.value = 0;
+    filteredExpenseCents.value = 0;
+    filteredBalanceCents.value = 0;
+    isLoading.value = false;
+    isLoadingMore.value = false;
     _sync.reportPending('transactions', 0);
-    super.onClose();
   }
 
   // ── Date range helpers ──────────────────────────────────────────────────
@@ -146,7 +162,7 @@ class TransactionController extends GetxController {
       isLoadingMore.value = true;
     }
 
-    final uid = Get.find<AuthController>().user.value?.uid;
+    final uid = boundUid;
     if (uid == null) {
       isLoading.value = false;
       isLoadingMore.value = false;
@@ -219,7 +235,7 @@ class TransactionController extends GetxController {
   // ── Totals fetch (full dataset, accurate) ───────────────────────────────
 
   Future<void> _fetchTotals({String? category}) async {
-    final uid = Get.find<AuthController>().user.value?.uid;
+    final uid = boundUid;
     if (uid == null) return;
 
     final range = _activeDateRange;
@@ -306,7 +322,7 @@ class TransactionController extends GetxController {
     String description = '',
     required DateTime date,
   }) async {
-    final uid = Get.find<AuthController>().user.value?.uid;
+    final uid = boundUid;
     if (uid == null) return;
 
     final parsed = double.tryParse(amountText.replaceAll(',', ''));
@@ -352,7 +368,7 @@ class TransactionController extends GetxController {
 
   /// Deletes a transaction.
   Future<void> deleteTransaction(String txnId) async {
-    final uid = Get.find<AuthController>().user.value?.uid;
+    final uid = boundUid;
     if (uid == null) return;
     final idx = transactions.indexWhere((t) => t.id == txnId);
     if (idx == -1) return;

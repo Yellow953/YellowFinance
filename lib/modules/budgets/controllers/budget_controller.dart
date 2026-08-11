@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:get/get.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/mixins/auth_scoped_controller.dart';
 import '../../../core/services/sync_service.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../data/models/budget_model.dart';
@@ -11,7 +12,6 @@ import '../../../data/models/transaction_model.dart';
 import '../../../data/repositories/budget_repository.dart';
 import '../../../data/repositories/goal_repository.dart';
 import '../../../data/repositories/transaction_repository.dart';
-import '../../auth/controllers/auth_controller.dart';
 
 /// A budget paired with what the user actually did against it this month.
 typedef BudgetProgress = ({
@@ -26,7 +26,7 @@ typedef BudgetProgress = ({
 /// month change. Nothing about progress is persisted — it is always derived, so
 /// editing or deleting a transaction is reflected immediately and there is no
 /// stored total that can drift out of step with the ledger.
-class BudgetController extends GetxController {
+class BudgetController extends GetxController with AuthScopedController {
   final BudgetRepository _budgetRepo;
   final GoalRepository _goalRepo;
   final TransactionRepository _txnRepo;
@@ -70,27 +70,35 @@ class BudgetController extends GetxController {
       _sync.reportPending('goals', list.where((g) => g.pendingSync).length);
     });
 
-    final authCtrl = Get.find<AuthController>();
-    if (authCtrl.user.value != null) {
-      _subscribe();
-    } else {
-      ever(authCtrl.user, (user) {
-        if (user != null && _budgetSub == null) _subscribe();
-      });
-    }
+    bindToAuth();
   }
 
   @override
-  void onClose() {
+  void onUserBound(String uid) => _subscribe();
+
+  @override
+  void onUserUnbound() {
     _budgetSub?.cancel();
     _goalSub?.cancel();
     _txnSub?.cancel();
+    _budgetSub = null;
+    _goalSub = null;
+    _txnSub = null;
+    budgets.clear();
+    goals.clear();
+    _transactions.clear();
+    // Progress is derived from the transaction list, so its memo has to go too
+    // — otherwise the next account's first render reuses the old totals.
+    _totalsCache.clear();
+    _txnRevision.value++;
+    _budgetsLoaded = false;
+    _txnsLoaded = false;
+    isLoading.value = false;
     _sync.reportPending('budgets', 0);
     _sync.reportPending('goals', 0);
-    super.onClose();
   }
 
-  String? get _uid => Get.find<AuthController>().user.value?.uid;
+  String? get _uid => boundUid;
 
   SyncService get _sync => Get.find<SyncService>();
 

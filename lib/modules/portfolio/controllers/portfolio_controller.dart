@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'package:get/get.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/mixins/auth_scoped_controller.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../../../data/models/asset_model.dart';
 import '../../../data/repositories/portfolio_repository.dart';
-import '../../auth/controllers/auth_controller.dart';
 
 /// Manages the watchlist assets with live price enrichment.
-class PortfolioController extends GetxController {
+class PortfolioController extends GetxController with AuthScopedController {
   final PortfolioRepository _portfolioRepo;
 
   final RxList<AssetModel> assets = <AssetModel>[].obs;
@@ -53,17 +53,28 @@ class PortfolioController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _subscribe();
+    bindToAuth();
   }
 
   @override
-  void onClose() {
+  void onUserBound(String uid) => _subscribe();
+
+  @override
+  void onUserUnbound() {
     _sub?.cancel();
-    super.onClose();
+    _sub = null;
+    assets.clear();
+    // Prices are keyed by symbol, not by user, but the cache is dropped anyway
+    // so the next account's first paint reflects a fresh fetch rather than
+    // whatever the previous session happened to leave behind.
+    _priceCache.clear();
+    selectedFilter.value = 'All';
+    isLoading.value = false;
+    isRefreshing.value = false;
   }
 
   void _subscribe() {
-    final uid = Get.find<AuthController>().user.value?.uid;
+    final uid = boundUid;
     if (uid == null) return;
     isLoading.value = true;
     bool seeded = false;
@@ -160,7 +171,7 @@ class PortfolioController extends GetxController {
 
   /// Removes an asset from the watchlist.
   Future<void> removeAsset(String assetId) async {
-    final uid = Get.find<AuthController>().user.value?.uid;
+    final uid = boundUid;
     if (uid == null) return;
     try {
       await _portfolioRepo.removeAsset(uid, assetId);

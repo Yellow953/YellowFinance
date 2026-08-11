@@ -2,16 +2,16 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/mixins/auth_scoped_controller.dart';
 import '../../../core/services/home_category_filter_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/sport_reminder_service.dart';
 import '../../../data/models/sport_record_model.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/repositories/transaction_repository.dart';
-import '../../../modules/auth/controllers/auth_controller.dart';
 
 /// Drives the Home screen: balance summary + recent transactions.
-class HomeController extends GetxController {
+class HomeController extends GetxController with AuthScopedController {
   final TransactionRepository _txnRepo;
   final HomeCategoryFilterService _categoryFilter;
 
@@ -45,18 +45,29 @@ class HomeController extends GetxController {
     // Re-derive as soon as the category settings change in Profile.
     ever(_categoryFilter.excludedIncome, (_) => _applyCategoryFilter());
     ever(_categoryFilter.excludedExpense, (_) => _applyCategoryFilter());
-    final authCtrl = Get.find<AuthController>();
-    if (authCtrl.user.value != null) {
-      _subscribeToTransactions();
-      _subscribeToSports();
-    } else {
-      ever(authCtrl.user, (user) {
-        if (user != null && _txnSub == null) {
-          _subscribeToTransactions();
-          _subscribeToSports();
-        }
-      });
-    }
+    bindToAuth();
+  }
+
+  @override
+  void onUserBound(String uid) {
+    _subscribeToTransactions();
+    _subscribeToSports();
+  }
+
+  @override
+  void onUserUnbound() {
+    _txnSub?.cancel();
+    _sportSub?.cancel();
+    _txnSub = null;
+    _sportSub = null;
+    transactions.clear();
+    visibleTransactions.clear();
+    sportRecords.clear();
+    totalBalanceCents.value = 0;
+    totalIncomeCents.value = 0;
+    totalExpenseCents.value = 0;
+    sportStreakDays.value = 0;
+    isLoading.value = false;
   }
 
   void _handlePendingNotification() {
@@ -68,15 +79,8 @@ class HomeController extends GetxController {
     Future.delayed(Duration.zero, () => Get.toNamed(route, arguments: args));
   }
 
-  @override
-  void onClose() {
-    _txnSub?.cancel();
-    _sportSub?.cancel();
-    super.onClose();
-  }
-
   void _subscribeToTransactions() {
-    final uid = Get.find<AuthController>().user.value?.uid;
+    final uid = boundUid;
     if (uid == null) return;
     isLoading.value = true;
     _txnSub = _txnRepo.watchTransactions(uid).listen(
@@ -116,7 +120,7 @@ class HomeController extends GetxController {
   }
 
   void _subscribeToSports() {
-    final uid = Get.find<AuthController>().user.value?.uid;
+    final uid = boundUid;
     if (uid == null) return;
     _sportSub = FirebaseFirestore.instance
         .collection(AppConstants.colUsers)

@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 import 'notification_service.dart';
+import 'user_prefs.dart';
 
 /// Daily reminder to log your sport entry so you don't break your streak.
 ///
@@ -40,30 +41,44 @@ abstract class SportReminderService {
 
   // ── Persistence ─────────────────────────────────────────────────────────
 
+  // Settings belong to the signed-in account, not the device — see [UserPrefs].
+  // A null key means signed out: reads fall back to defaults and writes drop.
+
   static Future<bool> isEnabled() async {
+    final key = UserPrefs.keyFor(_prefEnabled);
+    if (key == null) return false;
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_prefEnabled) ?? false;
+    return prefs.getBool(key) ?? false;
   }
 
   static Future<int> savedHour() async {
+    final key = UserPrefs.keyFor(_prefHour);
+    if (key == null) return 23;
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_prefHour) ?? 23; // default 11 PM
+    return prefs.getInt(key) ?? 23; // default 11 PM
   }
 
   static Future<int> savedMinute() async {
+    final key = UserPrefs.keyFor(_prefMinute);
+    if (key == null) return 0;
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_prefMinute) ?? 0;
+    return prefs.getInt(key) ?? 0;
   }
 
   static Future<void> setEnabled(bool value) async {
+    final key = UserPrefs.keyFor(_prefEnabled);
+    if (key == null) return;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_prefEnabled, value);
+    await prefs.setBool(key, value);
   }
 
   static Future<void> setTime({required int hour, required int minute}) async {
+    final hourKey = UserPrefs.keyFor(_prefHour);
+    final minuteKey = UserPrefs.keyFor(_prefMinute);
+    if (hourKey == null || minuteKey == null) return;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_prefHour, hour);
-    await prefs.setInt(_prefMinute, minute);
+    await prefs.setInt(hourKey, hour);
+    await prefs.setInt(minuteKey, minute);
   }
 
   // ── Scheduling ───────────────────────────────────────────────────────────
@@ -128,6 +143,10 @@ abstract class SportReminderService {
       scheduled++;
     }
   }
+
+  /// Cancels every scheduled reminder. Called on sign-out so one account's
+  /// reminders don't keep firing for the next person to use the device.
+  static Future<void> cancelAll() => _cancelAll();
 
   static Future<void> _cancelAll() async {
     for (int i = 0; i < _scheduleDays; i++) {

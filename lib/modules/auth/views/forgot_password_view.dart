@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/utils/safe_insets.dart';
 import '../../../core/utils/validators.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_text_field.dart';
@@ -105,7 +106,8 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                   borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                  padding: EdgeInsets.fromLTRB(
+                      24, 32, 24, 24 + context.bottomInset),
                   child: Form(
                     key: _formKey,
                     child: Column(

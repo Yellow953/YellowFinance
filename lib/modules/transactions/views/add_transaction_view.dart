@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/utils/safe_insets.dart';
 import '../../../core/utils/validators.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_text_field.dart';
@@ -119,7 +120,8 @@ class _AddTransactionViewState extends State<AddTransactionView> {
                       BorderRadius.vertical(top: Radius.circular(28)),
                 ),
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 28, 20, 40),
+                  padding: EdgeInsets.fromLTRB(
+                      20, 28, 20, 40 + context.bottomInset),
                   child: Form(
                     key: _formKey,
                     child: Column(

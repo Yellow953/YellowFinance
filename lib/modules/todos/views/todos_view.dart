@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/utils/safe_insets.dart';
 import '../../../data/models/todo_model.dart';
 import '../../../routes/app_routes.dart';
+import '../../../shared/widgets/app_bottom_sheet.dart';
 import '../../../shared/widgets/nav_bar.dart';
 import '../../../shared/widgets/sync_dot.dart';
 import '../controllers/todo_controller.dart';
@@ -213,25 +215,15 @@ class _TodosViewState extends State<TodosView> {
   }
 
   void _showAddSheet(BuildContext context, TodoController ctrl) {
-    showModalBottomSheet(
+    showAppSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
       builder: (_) => _AddTodoSheet(controller: ctrl),
     );
   }
 
   void _showEditSheet(BuildContext context, TodoModel todo) {
-    showModalBottomSheet(
+    showAppSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
       builder: (_) => _AddTodoSheet(controller: _ctrl, initialTodo: todo),
     );
   }
@@ -1041,106 +1033,161 @@ class _AddTodoSheetState extends State<_AddTodoSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
+    return Padding(
+      padding: EdgeInsets.only(bottom: context.sheetBottomInset),
       child: Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.only(top: 12, bottom: 20),
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(2),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 20),
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+
+            Text(
+              _isEditing ? 'Edit Task' : 'New Task',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Title field
+            TextField(
+              controller: _titleCtrl,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Task title',
+                hintStyle: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w400),
+                filled: true,
+                fillColor: AppColors.background,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 14),
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            // Note field
+            TextField(
+              controller: _noteCtrl,
+              textCapitalization: TextCapitalization.sentences,
+              style: const TextStyle(
+                  fontSize: 14, color: AppColors.textPrimary),
+              maxLines: 2,
+              decoration: InputDecoration(
+                hintText: 'Note (optional)',
+                hintStyle: const TextStyle(color: AppColors.textMuted),
+                filled: true,
+                fillColor: AppColors.background,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 14),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Due date + time row
+            Row(
+              children: [
+                // Date button
+                GestureDetector(
+                  onTap: _pickDate,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: _dueDate != null
+                          ? AppColors.dark
+                          : AppColors.background,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.calendar_today_rounded,
+                          size: 15,
+                          color: _dueDate != null
+                              ? AppColors.surface
+                              : AppColors.textMuted,
+                        ),
+                        const SizedBox(width: 7),
+                        Text(
+                          _dueDate != null
+                              ? _formatDate(_dueDate!)
+                              : 'Date',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: _dueDate != null
+                                ? AppColors.surface
+                                : AppColors.textMuted,
+                          ),
+                        ),
+                        if (_dueDate != null) ...[
+                          const SizedBox(width: 7),
+                          GestureDetector(
+                            onTap: () => setState(() {
+                              _dueDate = null;
+                              _dueTime = null;
+                              _recurrence = Recurrence.none;
+                            }),
+                            child: Icon(
+                              Icons.close_rounded,
+                              size: 13,
+                              color: AppColors.surface
+                                  .withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
 
-              Text(
-                _isEditing ? 'Edit Task' : 'New Task',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Title field
-              TextField(
-                controller: _titleCtrl,
-                autofocus: true,
-                textCapitalization: TextCapitalization.sentences,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Task title',
-                  hintStyle: const TextStyle(
-                      color: AppColors.textMuted,
-                      fontWeight: FontWeight.w400),
-                  filled: true,
-                  fillColor: AppColors.background,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              // Note field
-              TextField(
-                controller: _noteCtrl,
-                textCapitalization: TextCapitalization.sentences,
-                style: const TextStyle(
-                    fontSize: 14, color: AppColors.textPrimary),
-                maxLines: 2,
-                decoration: InputDecoration(
-                  hintText: 'Note (optional)',
-                  hintStyle: const TextStyle(color: AppColors.textMuted),
-                  filled: true,
-                  fillColor: AppColors.background,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Due date + time row
-              Row(
-                children: [
-                  // Date button
+                // Time button — only visible once a date is chosen
+                if (_dueDate != null) ...[
+                  const SizedBox(width: 8),
                   GestureDetector(
-                    onTap: _pickDate,
+                    onTap: _pickTime,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 12),
                       decoration: BoxDecoration(
-                        color: _dueDate != null
-                            ? AppColors.dark
+                        color: _dueTime != null
+                            ? AppColors.primary
                             : AppColors.background,
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -1148,38 +1195,34 @@ class _AddTodoSheetState extends State<_AddTodoSheet> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            Icons.calendar_today_rounded,
+                            Icons.access_time_rounded,
                             size: 15,
-                            color: _dueDate != null
-                                ? AppColors.surface
+                            color: _dueTime != null
+                                ? AppColors.dark
                                 : AppColors.textMuted,
                           ),
                           const SizedBox(width: 7),
                           Text(
-                            _dueDate != null
-                                ? _formatDate(_dueDate!)
-                                : 'Date',
+                            _dueTime != null
+                                ? _formatTime(_dueTime!)
+                                : 'Time',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: _dueDate != null
-                                  ? AppColors.surface
+                              color: _dueTime != null
+                                  ? AppColors.dark
                                   : AppColors.textMuted,
                             ),
                           ),
-                          if (_dueDate != null) ...[
+                          if (_dueTime != null) ...[
                             const SizedBox(width: 7),
                             GestureDetector(
-                              onTap: () => setState(() {
-                                _dueDate = null;
-                                _dueTime = null;
-                                _recurrence = Recurrence.none;
-                              }),
-                              child: Icon(
+                              onTap: () =>
+                                  setState(() => _dueTime = null),
+                              child: const Icon(
                                 Icons.close_rounded,
                                 size: 13,
-                                color: AppColors.surface
-                                    .withValues(alpha: 0.6),
+                                color: AppColors.textMuted,
                               ),
                             ),
                           ],
@@ -1187,109 +1230,53 @@ class _AddTodoSheetState extends State<_AddTodoSheet> {
                       ),
                     ),
                   ),
-
-                  // Time button — only visible once a date is chosen
-                  if (_dueDate != null) ...[
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: _pickTime,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: _dueTime != null
-                              ? AppColors.primary
-                              : AppColors.background,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.access_time_rounded,
-                              size: 15,
-                              color: _dueTime != null
-                                  ? AppColors.dark
-                                  : AppColors.textMuted,
-                            ),
-                            const SizedBox(width: 7),
-                            Text(
-                              _dueTime != null
-                                  ? _formatTime(_dueTime!)
-                                  : 'Time',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: _dueTime != null
-                                    ? AppColors.dark
-                                    : AppColors.textMuted,
-                              ),
-                            ),
-                            if (_dueTime != null) ...[
-                              const SizedBox(width: 7),
-                              GestureDetector(
-                                onTap: () =>
-                                    setState(() => _dueTime = null),
-                                child: const Icon(
-                                  Icons.close_rounded,
-                                  size: 13,
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
                 ],
-              ),
-
-              // Recurrence picker — only when a date is chosen
-              if (_dueDate != null) ...[
-                const SizedBox(height: 12),
-                _RecurrencePicker(
-                  value: _recurrence,
-                  onChanged: (r) => setState(() => _recurrence = r),
-                ),
               ],
+            ),
 
-              const SizedBox(height: 20),
-
-              // Save button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _saving ? null : _save,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.dark,
-                    foregroundColor: AppColors.surface,
-                    disabledBackgroundColor: AppColors.border,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.surface,
-                          ),
-                        )
-                      : Text(
-                          _isEditing ? 'Save Changes' : 'Add Task',
-                          style: const TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w700),
-                        ),
-                ),
+            // Recurrence picker — only when a date is chosen
+            if (_dueDate != null) ...[
+              const SizedBox(height: 12),
+              _RecurrencePicker(
+                value: _recurrence,
+                onChanged: (r) => setState(() => _recurrence = r),
               ),
             ],
-          ),
+
+            const SizedBox(height: 20),
+
+            // Save button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _saving ? null : _save,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.dark,
+                  foregroundColor: AppColors.surface,
+                  disabledBackgroundColor: AppColors.border,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 0,
+                ),
+                child: _saving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.surface,
+                        ),
+                      )
+                    : Text(
+                        _isEditing ? 'Save Changes' : 'Add Task',
+                        style: const TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w700),
+                      ),
+              ),
+            ),
+          ],
         ),
       ),
     );

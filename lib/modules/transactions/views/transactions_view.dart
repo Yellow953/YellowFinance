@@ -3,8 +3,10 @@ import 'package:get/get.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/safe_insets.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../routes/app_routes.dart';
+import '../../../shared/widgets/app_bottom_sheet.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/nav_bar.dart';
 import '../../../shared/widgets/transaction_tile.dart';
@@ -57,9 +59,9 @@ class _TransactionsViewState extends State<TransactionsView> {
       _controller.filterCategory.value != 'All';
 
   void _openFilterSheet() {
-    showModalBottomSheet(
+    showAppSheet(
       context: context,
-      isScrollControlled: true,
+      // Transparent: the sheet paints its own rounded surface.
       backgroundColor: Colors.transparent,
       builder: (_) => _FilterSheet(controller: _controller),
     );
@@ -530,11 +532,7 @@ class _FilterSheetState extends State<_FilterSheet> {
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom +
-            MediaQuery.of(context).padding.bottom +
-            24,
-      ),
+      padding: EdgeInsets.only(bottom: context.sheetBottomInset + 24),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,

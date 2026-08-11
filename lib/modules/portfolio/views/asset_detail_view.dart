@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/services/market_data_service.dart';
+import '../../../core/utils/safe_insets.dart';
 import '../../../data/models/asset_model.dart';
 import '../../../routes/app_routes.dart';
 import '../controllers/asset_detail_controller.dart';
@@ -288,6 +289,9 @@ class _AssetDetailViewState extends State<AssetDetailView> {
             // ── White card ──────────────────────────────────────────────
             Expanded(
               child: Container(
+                // Padding, not a SafeArea: the card's background still bleeds
+                // past the home indicator, only its contents sit above it.
+                padding: EdgeInsets.only(bottom: context.bottomInset),
                 decoration: const BoxDecoration(
                   color: AppColors.background,
                   borderRadius:

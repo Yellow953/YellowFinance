@@ -8,6 +8,7 @@ import '../../../core/services/home_category_filter_service.dart';
 import '../../../core/services/nofap_notification_service.dart';
 import '../../../core/services/sport_reminder_service.dart';
 import '../../../core/utils/app_snackbar.dart';
+import '../../../core/utils/safe_insets.dart';
 import '../../../core/utils/validators.dart';
 import '../../../modules/auth/controllers/auth_controller.dart';
 import '../../../modules/home/controllers/home_controller.dart';
@@ -151,7 +152,8 @@ class _ProfileViewState extends State<ProfileView> {
                       BorderRadius.vertical(top: Radius.circular(28)),
                 ),
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 28, 20, 32),
+                  padding: EdgeInsets.fromLTRB(
+                      20, 28, 20, 32 + context.bottomInset),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

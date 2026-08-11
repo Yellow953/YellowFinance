@@ -5,8 +5,10 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/services/connectivity_service.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/safe_insets.dart';
 import '../../../data/models/sport_record_model.dart';
 import '../../../routes/app_routes.dart';
+import '../../../shared/widgets/app_bottom_sheet.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/nav_bar.dart';
 import '../../../shared/widgets/sync_dot.dart';
@@ -288,13 +290,8 @@ class _SportsViewState extends State<SportsView> {
   }
 
   void _showAddSheet(BuildContext context, SportController ctrl) {
-    showModalBottomSheet(
+    showAppSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
       builder: (_) => _AddRecordSheet(controller: ctrl),
     );
   }
@@ -863,153 +860,148 @@ class _AddRecordSheetState extends State<_AddRecordSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
+    return Padding(
+      padding: EdgeInsets.only(bottom: context.sheetBottomInset),
       child: Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.only(top: 12, bottom: 20),
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 20),
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
+            ),
 
-              const Text(
-                'Add Activity',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
+            const Text(
+              'Add Activity',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
               ),
+            ),
 
-              const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-              // Date picker
-              Row(
-                children: [
-                  GestureDetector(
-                    onTap: _pickDate,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: AppColors.dark,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.calendar_today_rounded,
-                              size: 15, color: AppColors.surface),
-                          const SizedBox(width: 8),
-                          Text(
-                            _formatDate(_date),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.surface,
-                            ),
-                          ),
-                        ],
-                      ),
+            // Date picker
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: _pickDate,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.dark,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  _QuickDateButton(
-                    label: 'Yesterday',
-                    selected: _isYesterday(_date),
-                    onTap: () => setState(() => _date =
-                        DateTime.now().subtract(const Duration(days: 1))),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // Category label
-              const Text(
-                'Category',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              _SportCategoryGrid(
-                selected: _category,
-                onChanged: (c) => setState(() => _category = c),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Description field
-              AppTextField(
-                label: 'Description',
-                hint: 'e.g. 50 PU, 100 ABS',
-                controller: _descCtrl,
-                keyboardType: TextInputType.text,
-                textCapitalization: TextCapitalization.sentences,
-                maxLines: 1,
-                prefixIcon: const Icon(
-                  Icons.notes_rounded,
-                  color: AppColors.textMuted,
-                  size: 20,
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Save button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _saving ? null : _save,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.dark,
-                    foregroundColor: AppColors.surface,
-                    disabledBackgroundColor: AppColors.border,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.calendar_today_rounded,
+                            size: 15, color: AppColors.surface),
+                        const SizedBox(width: 8),
+                        Text(
+                          _formatDate(_date),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
                             color: AppColors.surface,
                           ),
-                        )
-                      : const Text(
-                          'Add Record',
-                          style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w700),
                         ),
+                      ],
+                    ),
+                  ),
                 ),
+                const SizedBox(width: 8),
+                _QuickDateButton(
+                  label: 'Yesterday',
+                  selected: _isYesterday(_date),
+                  onTap: () => setState(() => _date =
+                      DateTime.now().subtract(const Duration(days: 1))),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Category label
+            const Text(
+              'Category',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 10),
+
+            _SportCategoryGrid(
+              selected: _category,
+              onChanged: (c) => setState(() => _category = c),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Description field
+            AppTextField(
+              label: 'Description',
+              hint: 'e.g. 50 PU, 100 ABS',
+              controller: _descCtrl,
+              keyboardType: TextInputType.text,
+              textCapitalization: TextCapitalization.sentences,
+              maxLines: 1,
+              prefixIcon: const Icon(
+                Icons.notes_rounded,
+                color: AppColors.textMuted,
+                size: 20,
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Save button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _saving ? null : _save,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.dark,
+                  foregroundColor: AppColors.surface,
+                  disabledBackgroundColor: AppColors.border,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 0,
+                ),
+                child: _saving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.surface,
+                        ),
+                      )
+                    : const Text(
+                        'Add Record',
+                        style: TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w700),
+                      ),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/utils/safe_insets.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../controllers/auth_controller.dart';
 
@@ -75,7 +76,8 @@ class VerifyEmailView extends StatelessWidget {
                       BorderRadius.vertical(top: Radius.circular(28)),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+                  padding: EdgeInsets.fromLTRB(
+                      24, 32, 24, 24 + context.bottomInset),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

@@ -6,8 +6,10 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/safe_insets.dart';
 import '../../../data/models/budget_model.dart';
 import '../../../data/models/goal_model.dart';
+import '../../../shared/widgets/app_bottom_sheet.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/budget_controller.dart';
@@ -221,7 +223,7 @@ class _BudgetsTab extends StatelessWidget {
       final hide = Get.find<AuthController>().hideBalances.value;
 
       return ListView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+        padding: EdgeInsets.fromLTRB(20, 20, 20, 40 + context.bottomInset),
         children: [
           _MonthSelector(controller: controller),
           const SizedBox(height: 16),
@@ -511,7 +513,7 @@ class _GoalsTab extends StatelessWidget {
       final hide = Get.find<AuthController>().hideBalances.value;
       if (goals.isEmpty) {
         return ListView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+          padding: EdgeInsets.fromLTRB(20, 20, 20, 40 + context.bottomInset),
           children: [
             AppEmptyState(
               icon: Icons.savings_outlined,
@@ -526,7 +528,7 @@ class _GoalsTab extends StatelessWidget {
       }
 
       return ListView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+        padding: EdgeInsets.fromLTRB(20, 20, 20, 40 + context.bottomInset),
         children: [
           for (final g in goals)
             _GoalCard(goal: g, controller: controller, hide: hide),
@@ -852,13 +854,8 @@ void showBudgetSheet(
   BudgetController controller, {
   BudgetModel? existing,
 }) {
-  showModalBottomSheet(
+  showAppSheet(
     context: context,
-    isScrollControlled: true,
-    backgroundColor: AppColors.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
     builder: (_) => _BudgetSheet(controller: controller, existing: existing),
   );
 }
@@ -869,13 +866,8 @@ void showGoalSheet(
   BudgetController controller, {
   GoalModel? existing,
 }) {
-  showModalBottomSheet(
+  showAppSheet(
     context: context,
-    isScrollControlled: true,
-    backgroundColor: AppColors.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
     builder: (_) => _GoalSheet(controller: controller, existing: existing),
   );
 }
@@ -887,13 +879,8 @@ void showContributeSheet(
   GoalModel goal, {
   required bool withdraw,
 }) {
-  showModalBottomSheet(
+  showAppSheet(
     context: context,
-    isScrollControlled: true,
-    backgroundColor: AppColors.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
     builder: (_) => _ContributeSheet(
       controller: controller,
       goal: goal,
@@ -1033,7 +1020,7 @@ class _BudgetSheetState extends State<_BudgetSheet> {
         left: 20,
         right: 20,
         top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        bottom: context.sheetBottomInset + 24,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -1269,7 +1256,7 @@ class _GoalSheetState extends State<_GoalSheet> {
         left: 20,
         right: 20,
         top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        bottom: context.sheetBottomInset + 24,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -1427,7 +1414,7 @@ class _ContributeSheetState extends State<_ContributeSheet> {
         left: 20,
         right: 20,
         top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        bottom: context.sheetBottomInset + 24,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

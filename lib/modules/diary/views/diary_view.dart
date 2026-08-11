@@ -6,8 +6,10 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/safe_insets.dart';
 import '../../../data/models/diary_entry_model.dart';
 import '../../../routes/app_routes.dart';
+import '../../../shared/widgets/app_bottom_sheet.dart';
 import '../controllers/diary_controller.dart';
 
 /// Diary screen — searchable list of entries grouped by day.
@@ -41,13 +43,8 @@ class _DiaryViewState extends State<DiaryView> {
       Get.toNamed(AppRoutes.DIARY_ENTRY, arguments: entry);
 
   void _showFilters(BuildContext context) {
-    showModalBottomSheet(
+    showAppSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
       builder: (_) => _FilterSheet(controller: _ctrl),
     );
   }
@@ -112,7 +109,8 @@ class _DiaryViewState extends State<DiaryView> {
                         }
 
                         return ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(20, 4, 20, 40),
+                          padding: EdgeInsets.fromLTRB(
+                              20, 4, 20, 40 + context.bottomInset),
                           itemCount: days.length,
                           itemBuilder: (_, i) {
                             final day = days[i];
@@ -607,7 +605,7 @@ class _FilterSheet extends StatelessWidget {
         left: 20,
         right: 20,
         top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        bottom: context.sheetBottomInset + 24,
       ),
       child: SingleChildScrollView(
         child: Column(

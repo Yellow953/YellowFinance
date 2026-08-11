@@ -10,6 +10,7 @@ import '../../../data/models/goal_model.dart';
 import '../../../data/models/sport_record_model.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../routes/app_routes.dart';
+import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/nav_bar.dart';
 import '../../../shared/widgets/transaction_tile.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -43,6 +44,50 @@ class _ReportsViewState extends State<ReportsView> {
     AppRoutes.TRANSACTIONS,
     AppRoutes.REPORTS,
   ];
+
+  /// True when the user has tracked nothing anywhere, in any month. The page
+  /// then collapses to a single empty state instead of a column of empty cards.
+  ///
+  /// Kept as its own flag, recomputed by workers, so the Obx around the report
+  /// list depends on one rarely-flipping bool rather than on five collections —
+  /// otherwise every budget or diary write would rebuild the whole page.
+  final RxBool _noDataAtAll = false.obs;
+  final List<Worker> _workers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _recomputeNoDataAtAll();
+    _workers.addAll([
+      ever(controller.transactions, (_) => _recomputeNoDataAtAll()),
+      ever(controller.sportRecords, (_) => _recomputeNoDataAtAll()),
+      ever(_budgetCtrl.budgets, (_) => _recomputeNoDataAtAll()),
+      ever(_budgetCtrl.goals, (_) => _recomputeNoDataAtAll()),
+      ever(_budgetCtrl.isLoading, (_) => _recomputeNoDataAtAll()),
+      ever(_diaryCtrl.entries, (_) => _recomputeNoDataAtAll()),
+      ever(_diaryCtrl.isLoading, (_) => _recomputeNoDataAtAll()),
+    ]);
+  }
+
+  /// Waits on the budget and diary loads too — claiming there is nothing to
+  /// report while their streams are still arriving would flash a false empty.
+  void _recomputeNoDataAtAll() {
+    _noDataAtAll.value = controller.transactions.isEmpty &&
+        controller.sportRecords.isEmpty &&
+        _budgetCtrl.budgets.isEmpty &&
+        _budgetCtrl.goals.isEmpty &&
+        _diaryCtrl.entries.isEmpty &&
+        !_budgetCtrl.isLoading.value &&
+        !_diaryCtrl.isLoading.value;
+  }
+
+  @override
+  void dispose() {
+    for (final worker in _workers) {
+      worker.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -156,6 +201,17 @@ class _ReportsViewState extends State<ReportsView> {
                         child: CircularProgressIndicator(
                             color: AppColors.primary));
                   }
+                  if (_noDataAtAll.value) {
+                    return AppEmptyState(
+                      icon: Icons.insights_outlined,
+                      title: 'Nothing to report yet',
+                      message:
+                          'Reports are built from what you track — transactions, '
+                          'budgets, goals, diary entries and workouts all land here.',
+                      actionLabel: 'Add a transaction',
+                      onAction: () => Get.toNamed(AppRoutes.ADD_TRANSACTION),
+                    );
+                  }
                   return ListView(
                     padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
                     children: [
@@ -165,6 +221,20 @@ class _ReportsViewState extends State<ReportsView> {
                       // Rebuilds only when monthlyTotals cache changes
                       Obx(() {
                         controller.monthlyTotals;
+                        // An all-zero chart is six empty gridlines — say so
+                        // rather than drawing it.
+                        if (controller.hasNoChartActivity) {
+                          return _ReportEmpty(
+                            icon: Icons.bar_chart_rounded,
+                            title: 'No activity in the last 6 months',
+                            message:
+                                'Log income or an expense and the monthly trend '
+                                'starts building here.',
+                            actionLabel: 'Add a transaction',
+                            onAction: () =>
+                                Get.toNamed(AppRoutes.ADD_TRANSACTION),
+                          );
+                        }
                         return _BarChartCard(
                           controller: controller,
                           hidden: _authCtrl.hideBalances.value,
@@ -200,6 +270,7 @@ class _ReportsViewState extends State<ReportsView> {
                               type: AppConstants.txnIncome,
                               month: controller.selectedMonth.value,
                             ),
+                            month: controller.selectedMonth.value,
                             hidden: _authCtrl.hideBalances.value,
                           )),
 
@@ -231,6 +302,7 @@ class _ReportsViewState extends State<ReportsView> {
                       const SizedBox(height: 12),
                       // Rebuilds only when _monthlySportRecords or _sportCategoryMap changes
                       Obx(() => _SportsSummaryCard(
+                            controller: controller,
                             monthly: controller.monthlySportRecords,
                             categoryMap: controller.sportCategoryMap,
                           )),
@@ -244,17 +316,24 @@ class _ReportsViewState extends State<ReportsView> {
                         final groups = controller.transactionsByDay;
                         final hideAmt = _authCtrl.hideBalances.value;
                         if (groups.isEmpty) {
-                          return Container(
-                            height: 100,
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: const Center(
-                              child: Text('No transactions this month.',
-                                  style: AppTextStyles.bodyMedium),
-                            ),
+                          final jumpTo =
+                              controller.latestOtherTransactionMonth;
+                          final month = Formatters.dateMonthLabel(
+                              controller.selectedMonth.value);
+                          return _ReportEmpty(
+                            icon: Icons.receipt_long_outlined,
+                            title: 'No transactions in $month',
+                            message: jumpTo == null
+                                ? 'Record what comes in and what goes out to '
+                                    'see the month day by day.'
+                                : 'Nothing recorded this month. Your latest '
+                                    'activity was in ${Formatters.dateMonthLabel(jumpTo)}.',
+                            actionLabel: jumpTo == null
+                                ? 'Add a transaction'
+                                : 'View ${Formatters.dateMonthLabel(jumpTo)}',
+                            onAction: jumpTo == null
+                                ? () => Get.toNamed(AppRoutes.ADD_TRANSACTION)
+                                : () => controller.setSelectedMonth(jumpTo),
                           );
                         }
                         return Column(
@@ -303,23 +382,89 @@ class _ReportCard extends StatelessWidget {
   }
 }
 
-/// Centred "nothing here" line, sized to match a populated card.
+/// In-card empty state: framed icon, headline, an explanation of what would
+/// fill the section, and an optional way to act on it.
+///
+/// The section-level counterpart to [AppEmptyState] — same anatomy, sized to
+/// sit inside a report card rather than take over a screen.
 class _ReportEmpty extends StatelessWidget {
+  final IconData icon;
+  final String title;
   final String message;
 
-  const _ReportEmpty(this.message);
+  /// Omit both for a section the user cannot act on from here.
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  const _ReportEmpty({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.actionLabel,
+    this.onAction,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final showAction = actionLabel != null && onAction != null;
+
     return _ReportCard(
-      child: SizedBox(
-        height: 68,
-        child: Center(
-          child: Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
-          ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Column(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, size: 20, color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textMuted,
+                height: 1.4,
+              ),
+            ),
+            if (showAction) ...[
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: onAction,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: AppColors.dark,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    actionLabel!,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.surface,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -356,18 +501,27 @@ class _MiniBar extends StatelessWidget {
 class _BudgetPerformanceCard extends StatelessWidget {
   final List<BudgetProgress> expenses;
   final List<BudgetProgress> incomes;
+  final DateTime month;
   final bool hidden;
 
   const _BudgetPerformanceCard({
     required this.expenses,
     required this.incomes,
+    required this.month,
     required this.hidden,
   });
 
   @override
   Widget build(BuildContext context) {
     if (expenses.isEmpty && incomes.isEmpty) {
-      return const _ReportEmpty('No budgets set for this month.');
+      return _ReportEmpty(
+        icon: Icons.pie_chart_outline_rounded,
+        title: 'No budgets for ${Formatters.dateMonthLabel(month)}',
+        message: 'Set a limit on a category and this shows how the month '
+            'measured up against it.',
+        actionLabel: 'Set a budget',
+        onAction: () => Get.toNamed(AppRoutes.BUDGETS),
+      );
     }
 
     final kept =
@@ -549,7 +703,14 @@ class _GoalsProgressCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (goals.isEmpty) {
-      return const _ReportEmpty('No savings goals yet.');
+      return _ReportEmpty(
+        icon: Icons.savings_outlined,
+        title: 'No savings goals yet',
+        message: 'Set a target — an emergency fund, a trip — and track what '
+            'you have put aside towards it.',
+        actionLabel: 'Create a goal',
+        onAction: () => Get.toNamed(AppRoutes.BUDGETS),
+      );
     }
 
     final target = goals.fold<int>(0, (a, g) => a + g.targetCents);
@@ -667,7 +828,19 @@ class _DiaryStatsCard extends StatelessWidget {
         .toList();
 
     if (monthly.isEmpty) {
-      return const _ReportEmpty('No diary entries this month.');
+      // Entries the user does have sit on the diary screen, so send them there
+      // rather than offering a month jump this card cannot fill in.
+      return _ReportEmpty(
+        icon: Icons.menu_book_outlined,
+        title: 'No entries in ${Formatters.dateMonthLabel(month)}',
+        message: entries.isEmpty
+            ? 'Write about a day — or just say it — and your writing streak '
+                'and mood mix show up here.'
+            : 'Nothing written this month. Your other entries are on the '
+                'diary screen.',
+        actionLabel: entries.isEmpty ? 'Write an entry' : 'Open diary',
+        onAction: () => Get.toNamed(AppRoutes.DIARY),
+      );
     }
 
     // Distinct days matter more than raw entries — two entries in one day is
@@ -757,16 +930,39 @@ class _DiaryStatsCard extends StatelessWidget {
 // ─── Sports summary card ─────────────────────────────────────────────────────
 
 class _SportsSummaryCard extends StatelessWidget {
+  final ReportsController controller;
   final List<SportRecordModel> monthly;
   final Map<String, int> categoryMap;
 
   const _SportsSummaryCard({
+    required this.controller,
     required this.monthly,
     required this.categoryMap,
   });
 
   @override
   Widget build(BuildContext context) {
+    // A "0 sessions" tile is a worse answer than saying nothing was logged.
+    if (monthly.isEmpty) {
+      final jumpTo = controller.latestOtherSportMonth;
+      final month =
+          Formatters.dateMonthLabel(controller.selectedMonth.value);
+      return _ReportEmpty(
+        icon: Icons.fitness_center_rounded,
+        title: 'No sessions in $month',
+        message: jumpTo == null
+            ? 'Log a workout and your sessions and categories break down here.'
+            : 'Nothing logged this month. Your last session was in '
+                '${Formatters.dateMonthLabel(jumpTo)}.',
+        actionLabel: jumpTo == null
+            ? 'Log a session'
+            : 'View ${Formatters.dateMonthLabel(jumpTo)}',
+        onAction: jumpTo == null
+            ? () => Get.toNamed(AppRoutes.SPORTS)
+            : () => controller.setSelectedMonth(jumpTo),
+      );
+    }
+
     final maxCount =
         categoryMap.values.fold(0, (m, v) => v > m ? v : m);
 
@@ -1190,17 +1386,22 @@ class _PieChartCard extends StatelessWidget {
     final map = controller.expenseCategoryMap;
 
     if (map.isEmpty) {
-      return Container(
-        height: 100,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: const Center(
-          child: Text('No expense data this month.',
-              style: AppTextStyles.bodyMedium),
-        ),
+      final jumpTo = controller.latestOtherExpenseMonth;
+      final month =
+          Formatters.dateMonthLabel(controller.selectedMonth.value);
+      return _ReportEmpty(
+        icon: Icons.donut_large_outlined,
+        title: 'No expenses in $month',
+        message: jumpTo == null
+            ? 'Once you log an expense, this splits your spending by category.'
+            : 'Nothing went out this month. Your latest spending was in '
+                '${Formatters.dateMonthLabel(jumpTo)}.',
+        actionLabel: jumpTo == null
+            ? 'Add an expense'
+            : 'View ${Formatters.dateMonthLabel(jumpTo)}',
+        onAction: jumpTo == null
+            ? () => Get.toNamed(AppRoutes.ADD_TRANSACTION)
+            : () => controller.setSelectedMonth(jumpTo),
       );
     }
 

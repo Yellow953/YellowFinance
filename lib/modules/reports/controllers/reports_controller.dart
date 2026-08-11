@@ -181,6 +181,38 @@ class ReportsController extends GetxController {
   List<SportRecordModel> get recentSportRecords =>
       sportRecords.take(5).toList();
 
+  /// True when nothing at all was logged in the six months the bar chart spans.
+  bool get hasNoChartActivity => monthlyTotals
+      .every((t) => t.incomeCents == 0 && t.expenseCents == 0);
+
+  /// Latest month other than the selected one holding a transaction, or null.
+  ///
+  /// Empty sections use this to offer a jump instead of a dead end: a month
+  /// with no data reads very differently when the user has history elsewhere.
+  DateTime? get latestOtherTransactionMonth =>
+      _latestOtherMonth(transactions.map((t) => t.date));
+
+  /// Latest month other than the selected one holding an expense, or null —
+  /// the category breakdown is expense-only, so an income-only month is no
+  /// more useful to jump to than the empty one being shown.
+  DateTime? get latestOtherExpenseMonth => _latestOtherMonth(
+      transactions.where((t) => t.isExpense).map((t) => t.date));
+
+  /// Latest month other than the selected one holding a sport record, or null.
+  DateTime? get latestOtherSportMonth =>
+      _latestOtherMonth(sportRecords.map((r) => r.date));
+
+  DateTime? _latestOtherMonth(Iterable<DateTime> dates) {
+    final selected = selectedMonth.value;
+    DateTime? best;
+    for (final date in dates) {
+      if (date.year == selected.year && date.month == selected.month) continue;
+      final month = DateTime(date.year, date.month);
+      if (best == null || month.isAfter(best)) best = month;
+    }
+    return best;
+  }
+
   // ── Month navigation ──────────────────────────────────────────────────────
 
   void togglePieCategory(String category) {

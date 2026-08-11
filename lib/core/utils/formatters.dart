@@ -42,6 +42,15 @@ abstract class Formatters {
     return DateFormat('MMMM yyyy').format(date);
   }
 
+  /// Formats a [DateTime] as "March" within the current year, "March 2025"
+  /// otherwise — for prose where repeating the current year reads as noise.
+  static String dateMonthLabel(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year
+        ? DateFormat('MMMM').format(date)
+        : dateMonthYear(date);
+  }
+
   /// Formats a [DateTime] as "Sunday, 29 Mar".
   static String dateDayMonthFull(DateTime date) {
     return DateFormat('EEEE, d MMM').format(date);

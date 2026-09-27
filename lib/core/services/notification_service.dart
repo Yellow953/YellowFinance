@@ -90,8 +90,11 @@ abstract class NotificationService {
   static void _onTap(NotificationResponse response) {
     // Use offAllNamed so the back-stack doesn't accumulate.
     if (response.payload == sportsPayload) {
-      Future.delayed(Duration.zero,
-          () => Get.offAllNamed(AppRoutes.SPORTS, arguments: 'add'));
+      // Sports isn't a tab, so it opens on top of Home for its back button.
+      Future.delayed(Duration.zero, () {
+        Get.offAllNamed(AppRoutes.HOME);
+        Get.toNamed(AppRoutes.SPORTS, arguments: 'add');
+      });
     } else {
       Future.delayed(Duration.zero, () => Get.offAllNamed(AppRoutes.TODOS));
     }

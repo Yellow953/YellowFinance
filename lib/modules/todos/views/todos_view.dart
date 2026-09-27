@@ -4,7 +4,6 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/safe_insets.dart';
 import '../../../data/models/todo_model.dart';
-import '../../../routes/app_routes.dart';
 import '../../../shared/widgets/app_bottom_sheet.dart';
 import '../../../shared/widgets/nav_bar.dart';
 import '../../../shared/widgets/sync_dot.dart';
@@ -28,14 +27,6 @@ class TodosView extends StatefulWidget {
 class _TodosViewState extends State<TodosView> {
   late final TodoController _ctrl;
 
-  static const _routes = [
-    AppRoutes.HOME,
-    AppRoutes.TODOS,
-    AppRoutes.SPORTS,
-    AppRoutes.TRANSACTIONS,
-    AppRoutes.REPORTS,
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -57,7 +48,7 @@ class _TodosViewState extends State<TodosView> {
       bottomNavigationBar: AppNavBar(
         currentIndex: 1,
         onTap: (i) {
-          if (i != 1) Get.offNamed(_routes[i]);
+          if (i != 1) Get.offNamed(AppNavBar.routes[i]);
         },
       ),
       floatingActionButton: FloatingActionButton(

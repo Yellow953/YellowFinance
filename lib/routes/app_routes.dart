@@ -15,4 +15,6 @@ abstract class AppRoutes {
   static const String DIARY = '/diary';
   static const String DIARY_ENTRY = '/diary-entry';
   static const String PROFILE = '/profile';
+  static const String MORE = '/more';
+  static const String SETTINGS = '/settings';
 }

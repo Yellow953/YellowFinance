@@ -26,14 +26,6 @@ class _TransactionsViewState extends State<TransactionsView> {
   final _authCtrl = Get.find<AuthController>();
   final _scrollCtrl = ScrollController();
 
-  static const _routes = [
-    AppRoutes.HOME,
-    AppRoutes.TODOS,
-    AppRoutes.SPORTS,
-    AppRoutes.TRANSACTIONS,
-    AppRoutes.REPORTS,
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -73,9 +65,9 @@ class _TransactionsViewState extends State<TransactionsView> {
       backgroundColor: AppColors.dark,
       extendBody: true,
       bottomNavigationBar: AppNavBar(
-        currentIndex: 3,
+        currentIndex: 2,
         onTap: (i) {
-          if (i != 3) Get.offNamed(_routes[i]);
+          if (i != 2) Get.offNamed(AppNavBar.routes[i]);
         },
       ),
       floatingActionButton: FloatingActionButton(

@@ -12,11 +12,13 @@ import '../modules/budgets/views/budgets_view.dart';
 import '../modules/diary/bindings/diary_binding.dart';
 import '../modules/diary/views/diary_entry_view.dart';
 import '../modules/diary/views/diary_view.dart';
+import '../modules/more/views/more_view.dart';
 import '../modules/profile/views/profile_view.dart';
 import '../modules/home/bindings/home_binding.dart';
 import '../modules/home/views/home_view.dart';
 import '../modules/reports/bindings/reports_binding.dart';
 import '../modules/reports/views/reports_view.dart';
+import '../modules/settings/views/settings_view.dart';
 import '../modules/sports/bindings/sport_binding.dart';
 import '../modules/sports/views/sports_view.dart';
 import '../modules/todos/bindings/todo_binding.dart';
@@ -112,6 +114,17 @@ abstract class AppPages {
       page: () => const ProfileView(),
       middlewares: [AuthMiddleware()],
       transition: Transition.cupertino,
+    ),
+    GetPage(
+      name: AppRoutes.SETTINGS,
+      page: () => const SettingsView(),
+      middlewares: [AuthMiddleware()],
+      transition: Transition.cupertino,
+    ),
+    GetPage(
+      name: AppRoutes.MORE,
+      page: () => const MoreView(),
+      middlewares: [AuthMiddleware()],
     ),
   ];
 }

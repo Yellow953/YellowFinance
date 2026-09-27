@@ -37,14 +37,6 @@ class _ReportsViewState extends State<ReportsView> {
   final _budgetCtrl = Get.find<BudgetController>();
   final _diaryCtrl = Get.find<DiaryController>();
 
-  static const _routes = [
-    AppRoutes.HOME,
-    AppRoutes.TODOS,
-    AppRoutes.SPORTS,
-    AppRoutes.TRANSACTIONS,
-    AppRoutes.REPORTS,
-  ];
-
   /// True when the user has tracked nothing anywhere, in any month. The page
   /// then collapses to a single empty state instead of a column of empty cards.
   ///
@@ -95,9 +87,9 @@ class _ReportsViewState extends State<ReportsView> {
       backgroundColor: AppColors.dark,
       extendBody: true,
       bottomNavigationBar: AppNavBar(
-        currentIndex: 4,
+        currentIndex: 3,
         onTap: (i) {
-          if (i != 4) Get.offNamed(_routes[i]);
+          if (i != 3) Get.offNamed(AppNavBar.routes[i]);
         },
       ),
       body: SafeArea(

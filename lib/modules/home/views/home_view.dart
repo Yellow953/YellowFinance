@@ -6,7 +6,9 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../../data/models/todo_model.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../routes/app_routes.dart';
+import '../../../shared/widgets/link_row.dart';
 import '../../../shared/widgets/nav_bar.dart';
+import '../../../shared/widgets/user_avatar.dart';
 import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/transaction_tile.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -25,14 +27,6 @@ class _HomeViewState extends State<HomeView> {
   final _controller = Get.find<HomeController>();
   final _authCtrl = Get.find<AuthController>();
 
-  static const _routes = [
-    AppRoutes.HOME,
-    AppRoutes.TODOS,
-    AppRoutes.SPORTS,
-    AppRoutes.TRANSACTIONS,
-    AppRoutes.REPORTS,
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -45,7 +39,7 @@ class _HomeViewState extends State<HomeView> {
       bottomNavigationBar: AppNavBar(
         currentIndex: 0,
         onTap: (i) {
-          if (i != 0) Get.offNamed(_routes[i]);
+          if (i != 0) Get.offNamed(AppNavBar.routes[i]);
         },
       ),
       body: CustomScrollView(
@@ -83,50 +77,10 @@ class _HomeViewState extends State<HomeView> {
                       );
                     }),
                   ),
-                  Obx(() {
-                    final user = _authCtrl.user.value;
-                    final photoUrl = user?.photoUrl ?? '';
-                    final name = user?.displayName ?? '';
-                    final initials = name.isEmpty
-                        ? '?'
-                        : name.trim().split(' ').length > 1
-                            ? '${name.trim().split(' ').first[0]}${name.trim().split(' ').last[0]}'
-                                .toUpperCase()
-                            : name.trim()[0].toUpperCase();
-                    return GestureDetector(
-                      onTap: () => Get.toNamed(AppRoutes.PROFILE),
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          shape: BoxShape.circle,
-                          image: photoUrl.isNotEmpty
-                              ? DecorationImage(
-                                  image: ResizeImage(
-                                    NetworkImage(photoUrl),
-                                    width: 80,
-                                    height: 80,
-                                  ),
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
-                        ),
-                        child: photoUrl.isEmpty
-                            ? Center(
-                                child: Text(
-                                  initials,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.dark,
-                                  ),
-                                ),
-                              )
-                            : null,
-                      ),
-                    );
-                  }),
+                  Obx(() => GestureDetector(
+                        onTap: () => Get.toNamed(AppRoutes.PROFILE),
+                        child: UserAvatar(user: _authCtrl.user.value),
+                      )),
                   const SizedBox(width: 20),
                 ],
               ),
@@ -1111,7 +1065,7 @@ class _MoreLinks extends StatelessWidget {
                 subtitle = 'Set a monthly limit or savings goal';
               }
             }
-            return _LinkRow(
+            return LinkRow(
               icon: Icons.pie_chart_outline_rounded,
               title: 'Budgets & Goals',
               subtitle: subtitle,
@@ -1119,90 +1073,20 @@ class _MoreLinks extends StatelessWidget {
             );
           }),
           const Divider(height: 1, indent: 72, endIndent: 16),
-          _LinkRow(
+          LinkRow(
             icon: Icons.menu_book_rounded,
             title: 'Diary',
             subtitle: 'Write or look back',
             onTap: () => Get.toNamed(AppRoutes.DIARY),
           ),
           const Divider(height: 1, indent: 72, endIndent: 16),
-          _LinkRow(
+          LinkRow(
             icon: Icons.fitness_center_rounded,
             title: 'Sports',
             subtitle: 'Workouts and streaks',
-            // A tab, so it replaces Home the way the nav bar does.
-            onTap: () => Get.offNamed(AppRoutes.SPORTS),
+            onTap: () => Get.toNamed(AppRoutes.SPORTS),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _LinkRow extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  const _LinkRow({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, size: 20, color: AppColors.dark),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              size: 18,
-              color: AppColors.textMuted,
-            ),
-          ],
-        ),
       ),
     );
   }

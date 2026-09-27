@@ -7,10 +7,8 @@ import '../../../core/services/connectivity_service.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/safe_insets.dart';
 import '../../../data/models/sport_record_model.dart';
-import '../../../routes/app_routes.dart';
 import '../../../shared/widgets/app_bottom_sheet.dart';
 import '../../../shared/widgets/app_text_field.dart';
-import '../../../shared/widgets/nav_bar.dart';
 import '../../../shared/widgets/sync_dot.dart';
 import '../controllers/sport_controller.dart';
 
@@ -24,14 +22,6 @@ class SportsView extends StatefulWidget {
 
 class _SportsViewState extends State<SportsView> {
   late final SportController _ctrl;
-
-  static const _routes = [
-    AppRoutes.HOME,
-    AppRoutes.TODOS,
-    AppRoutes.SPORTS,
-    AppRoutes.TRANSACTIONS,
-    AppRoutes.REPORTS,
-  ];
 
   @override
   void initState() {
@@ -52,13 +42,6 @@ class _SportsViewState extends State<SportsView> {
 
     return Scaffold(
       backgroundColor: AppColors.dark,
-      extendBody: true,
-      bottomNavigationBar: AppNavBar(
-        currentIndex: 2,
-        onTap: (i) {
-          if (i != 2) Get.offNamed(_routes[i]);
-        },
-      ),
       floatingActionButton: Obx(() => ctrl.showAllUsers.value
           ? const SizedBox.shrink()
           : FloatingActionButton(
@@ -81,13 +64,27 @@ class _SportsViewState extends State<SportsView> {
                   // Title + month nav
                   Row(
                     children: [
+                      GestureDetector(
+                        onTap: Get.back,
+                        child: Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(11),
+                          ),
+                          child: const Icon(Icons.arrow_back_rounded,
+                              color: AppColors.surface, size: 18),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
                       const Text(
                         'Sports',
                         style: TextStyle(
-                          fontSize: 28,
+                          fontSize: 20,
                           fontWeight: FontWeight.w700,
                           color: AppColors.surface,
-                          letterSpacing: -0.5,
+                          letterSpacing: -0.3,
                         ),
                       ),
                       const Spacer(),
@@ -259,7 +256,7 @@ class _SportsViewState extends State<SportsView> {
                   }
                   return ListView.builder(
                     padding: EdgeInsets.fromLTRB(
-                        20, 20, 20, 100 + AppNavBar.overlap(context)),
+                        20, 20, 20, 100 + context.bottomInset),
                     itemCount: groups.length,
                     itemBuilder: (_, i) => _SportDayGroup(
                       date: groups[i].date,

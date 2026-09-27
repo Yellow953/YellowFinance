@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../routes/app_routes.dart';
 
 /// Floating frosted-glass bottom navigation bar — icons only, no labels.
 ///
@@ -30,9 +31,18 @@ class AppNavBar extends StatelessWidget {
   static const _icons = [
     (Icons.home_rounded, Icons.home_outlined),
     (Icons.checklist_rounded, Icons.checklist_outlined),
-    (Icons.fitness_center_rounded, Icons.fitness_center_rounded),
     (Icons.receipt_long_rounded, Icons.receipt_long_outlined),
     (Icons.bar_chart_rounded, Icons.bar_chart_outlined),
+    (Icons.menu_rounded, Icons.menu_rounded),
+  ];
+
+  /// Route of each tab, in bar order.
+  static const routes = [
+    AppRoutes.HOME,
+    AppRoutes.TODOS,
+    AppRoutes.TRANSACTIONS,
+    AppRoutes.REPORTS,
+    AppRoutes.MORE,
   ];
 
   /// Tab shown before the latest switch. Each page builds its own bar, so the

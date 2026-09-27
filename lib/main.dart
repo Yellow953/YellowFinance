@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -75,10 +74,6 @@ Future<void> main() async {
   // Biometric lock — awaited so the very first frame already carries the lock
   // screen when it's enabled, rather than flashing the app behind it.
   await Get.putAsync(() => AppLockService().init(), permanent: true);
-  Get.put(
-    Dio(BaseOptions(connectTimeout: const Duration(seconds: 15))),
-    permanent: true,
-  );
 
   // AuthController is permanent — it manages app-wide auth state
   // and must remain alive for all modules to call Get.find<AuthController>().

@@ -52,11 +52,6 @@ GoogleService-Info.plist
 # Firebase options (contains app IDs — optional, but safer to exclude)
 lib/firebase_options.dart
 
-# Node / Firebase Functions
-functions/node_modules/
-functions/.env
-functions/.env.*
-
 # Firebase debug logs
 firebase-debug.log
 firebase-debug.*.log

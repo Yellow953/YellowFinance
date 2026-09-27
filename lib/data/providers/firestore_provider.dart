@@ -13,9 +13,6 @@ class FirestoreProvider {
   CollectionReference<Map<String, dynamic>> transactionsCollection(String uid) =>
       _db.collection('users').doc(uid).collection('transactions');
 
-  CollectionReference<Map<String, dynamic>> portfolioCollection(String uid) =>
-      _db.collection('users').doc(uid).collection('portfolio');
-
   CollectionReference<Map<String, dynamic>> budgetsCollection(String uid) =>
       _db.collection('users').doc(uid).collection('budgets');
 
@@ -24,14 +21,4 @@ class FirestoreProvider {
 
   CollectionReference<Map<String, dynamic>> diaryCollection(String uid) =>
       _db.collection('users').doc(uid).collection('diary');
-
-  CollectionReference<Map<String, dynamic>> marketPricesCollection() =>
-      _db.collection('market_prices');
-
-  DocumentReference<Map<String, dynamic>> marketPriceDoc(String symbol) =>
-      _db.collection('market_prices').doc(symbol);
-
-  CollectionReference<Map<String, dynamic>> priceHistoryCollection(
-          String symbol) =>
-      _db.collection('market_prices').doc(symbol).collection('history');
 }

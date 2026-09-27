@@ -4,14 +4,9 @@ abstract class AppConstants {
   static const String appName = 'YellowFinance';
   static const String appTagline = 'Your money, clearly.';
 
-  // Firebase Functions
-  static const String fnFetchPrices = 'fetchPrices';
-
   // Firestore collections
   static const String colUsers = 'users';
   static const String colTransactions = 'transactions';
-  static const String colPortfolio = 'portfolio';
-  static const String colMarketPrices = 'market_prices';
   static const String colSports = 'sports';
   static const String colTodos = 'todos';
   static const String colAllSports = 'all_sports';
@@ -31,13 +26,6 @@ abstract class AppConstants {
   // Transaction types
   static const String txnIncome = 'income';
   static const String txnExpense = 'expense';
-
-  // Asset types
-  static const String assetCrypto = 'crypto';
-  static const String assetStock = 'stock';
-  static const String assetEtf = 'etf';
-  static const String assetGold = 'gold';
-  static const String assetSilver = 'silver';
 
   // Income categories
   static const List<String> incomeCategories = [

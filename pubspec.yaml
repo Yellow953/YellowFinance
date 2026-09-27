@@ -24,7 +24,6 @@ dependencies:
   get: ^4.6.6
 
   # Networking
-  dio: ^5.4.0
   connectivity_plus: ^7.1.1
 
   # Secure Storage

@@ -38,18 +38,4 @@ abstract class Validators {
     if (value.trim().length > 200) return 'Description must be under 200 characters';
     return null;
   }
-
-  static String? assetSymbol(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Symbol is required';
-    final regex = RegExp(r'^[A-Za-z0-9.\-]{1,10}$');
-    if (!regex.hasMatch(value.trim())) return 'Enter a valid symbol (max 10 chars)';
-    return null;
-  }
-
-  static String? quantity(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Quantity is required';
-    final parsed = double.tryParse(value.trim());
-    if (parsed == null || parsed <= 0) return 'Enter a valid quantity greater than 0';
-    return null;
-  }
 }

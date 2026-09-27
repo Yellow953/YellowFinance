@@ -243,13 +243,7 @@ class _HomeViewState extends State<HomeView> {
                     const _GroupLabel('Money', first: true),
                     _AddTransactionCard(),
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(child: _ReportsCard()),
-                        const SizedBox(width: 8),
-                        Expanded(child: _StocksCard()),
-                      ],
-                    ),
+                    SizedBox(width: double.infinity, child: _ReportsCard()),
                     const _GroupLabel('Activity'),
                     _ActionGroup(
                       actions: [
@@ -1180,20 +1174,6 @@ class _ReportsCard extends StatelessWidget {
       subtitle: 'Monthly',
       icon: Icons.bar_chart_rounded,
       onTap: () => Get.toNamed(AppRoutes.REPORTS),
-    );
-  }
-}
-
-// ── Stocks card ───────────────────────────────────────────────────────────
-
-class _StocksCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return _QuickCard(
-      label: 'Stocks',
-      subtitle: 'Portfolio',
-      icon: Icons.candlestick_chart_rounded,
-      onTap: () => Get.toNamed(AppRoutes.PORTFOLIO),
     );
   }
 }

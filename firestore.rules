@@ -4,7 +4,7 @@ rules_version = '2';
 //
 // Two shapes of data live here:
 //   * `users/{uid}/…` — private per-account data. Only the owner touches it.
-//   * `all_sports` and `market_prices` — deliberately shared reads.
+//   * `all_sports` — deliberately shared reads.
 //
 // Rules are the only enforcement that cannot be bypassed. In particular the
 // Flutter client reads through Firestore's offline cache, and cached reads are
@@ -39,7 +39,6 @@ service cloud.firestore {
       allow read, write: if isOwner(userId)
                          && collection in [
                               'transactions',
-                              'portfolio',
                               'budgets',
                               'goals',
                               'diary',
@@ -75,20 +74,6 @@ service cloud.firestore {
 
       allow delete: if isSignedIn()
                     && resource.data.userId == request.auth.uid;
-    }
-
-    // ── Market prices ────────────────────────────────────────────────────────
-    // Written exclusively by the scheduled `fetchPrices` function through the
-    // Admin SDK, which bypasses these rules. Clients only ever read, so every
-    // client write is denied — including from a compromised app.
-    match /market_prices/{symbol} {
-      allow read: if isSignedIn();
-      allow write: if false;
-
-      match /history/{entryId} {
-        allow read: if isSignedIn();
-        allow write: if false;
-      }
     }
 
     // Anything not matched above is denied.

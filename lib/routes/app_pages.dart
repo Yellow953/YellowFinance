@@ -15,9 +15,6 @@ import '../modules/diary/views/diary_view.dart';
 import '../modules/profile/views/profile_view.dart';
 import '../modules/home/bindings/home_binding.dart';
 import '../modules/home/views/home_view.dart';
-import '../modules/portfolio/bindings/portfolio_binding.dart';
-import '../modules/portfolio/views/asset_detail_view.dart';
-import '../modules/portfolio/views/portfolio_view.dart';
 import '../modules/reports/bindings/reports_binding.dart';
 import '../modules/reports/views/reports_view.dart';
 import '../modules/sports/bindings/sport_binding.dart';
@@ -86,12 +83,6 @@ abstract class AppPages {
       middlewares: [AuthMiddleware()],
     ),
     GetPage(
-      name: AppRoutes.PORTFOLIO,
-      page: () => const PortfolioView(),
-      binding: PortfolioBinding(),
-      middlewares: [AuthMiddleware()],
-    ),
-    GetPage(
       name: AppRoutes.REPORTS,
       page: () => const ReportsView(),
       binding: ReportsBinding(),
@@ -119,12 +110,6 @@ abstract class AppPages {
     GetPage(
       name: AppRoutes.PROFILE,
       page: () => const ProfileView(),
-      middlewares: [AuthMiddleware()],
-      transition: Transition.cupertino,
-    ),
-    GetPage(
-      name: AppRoutes.ASSET_DETAIL,
-      page: () => const AssetDetailView(),
       middlewares: [AuthMiddleware()],
       transition: Transition.cupertino,
     ),

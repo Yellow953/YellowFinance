@@ -7,7 +7,6 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/services/market_data_service.dart';
 import '../../../core/utils/safe_insets.dart';
 import '../../../data/models/asset_model.dart';
-import '../../../routes/app_routes.dart';
 import '../controllers/asset_detail_controller.dart';
 
 /// Full-screen price chart for a single watchlist asset.
@@ -38,31 +37,6 @@ class _AssetDetailViewState extends State<AssetDetailView> {
   void dispose() {
     Get.delete<AssetDetailController>(tag: _ctrl.asset.id);
     super.dispose();
-  }
-
-  static String _intervalLabel(String range) => switch (range) {
-        '1D' => '5-minute',
-        '1W' => '1-hour',
-        '1M' => 'daily',
-        '3M' => 'daily',
-        '1Y' => 'weekly',
-        _ => 'monthly',
-      };
-
-  /// Evenly samples [points] down to at most [max] entries, always keeping
-  /// the first and last so the AI sees the full period boundaries.
-  static List<({DateTime time, double price})> _sample(
-    List<({DateTime time, double price})> points,
-    int max,
-  ) {
-    if (points.length <= max) return points;
-    final result = <({DateTime time, double price})>[];
-    final step = (points.length - 1) / (max - 1);
-    for (var i = 0; i < max - 1; i++) {
-      result.add(points[(i * step).round()]);
-    }
-    result.add(points.last);
-    return result;
   }
 
   @override
@@ -134,100 +108,6 @@ class _AssetDetailViewState extends State<AssetDetailView> {
                             ),
                           ),
                         ],
-                      ),
-                      const Spacer(),
-                      // Ask AI shortcut
-                      GestureDetector(
-                        onTap: () {
-                          final range = _ctrl.selectedRange.value;
-                          final history = _ctrl.currentHistory;
-                          final high = _ctrl.chartHigh.value;
-                          final low = _ctrl.chartLow.value;
-                          final current = asset.currentPrice;
-                          final change24h = asset.priceChange24h;
-
-                          final hasChart = history.length >= 2;
-                          final startPrice =
-                              hasChart ? history.first.price : null;
-                          final endPrice = hasChart ? history.last.price : null;
-                          final periodChangePct = (startPrice != null &&
-                                  startPrice > 0 &&
-                                  endPrice != null)
-                              ? ((endPrice - startPrice) / startPrice * 100)
-                                  .toStringAsFixed(2)
-                              : null;
-
-                          final buf = StringBuffer();
-                          buf.writeln('Asset: ${asset.symbol} (${asset.type})');
-                          buf.writeln(
-                              'Selected period: $range (${_intervalLabel(range)} intervals)');
-                          if (current != null) {
-                            buf.writeln(
-                                'Current price: \$${current.toStringAsFixed(2)}');
-                          }
-                          if (change24h != null) {
-                            buf.writeln(
-                                '24h change: ${change24h >= 0 ? '+' : ''}${change24h.toStringAsFixed(2)}%');
-                          }
-                          if (hasChart) {
-                            buf.writeln(
-                                'Period high: \$${high.toStringAsFixed(2)}');
-                            buf.writeln(
-                                'Period low: \$${low.toStringAsFixed(2)}');
-                            if (periodChangePct != null) {
-                              buf.writeln(
-                                  'Period performance: ${double.parse(periodChangePct) >= 0 ? '+' : ''}$periodChangePct% over $range');
-                            }
-
-                            // Sampled price series with timestamps (max 60 pts).
-                            final sampled = _sample(history, 60);
-                            buf.writeln(
-                                '\nPrice series (${sampled.length} data points, oldest → newest):');
-                            for (final pt in sampled) {
-                              final ts =
-                                  '${pt.time.year}-${pt.time.month.toString().padLeft(2, '0')}-${pt.time.day.toString().padLeft(2, '0')} '
-                                  '${pt.time.hour.toString().padLeft(2, '0')}:${pt.time.minute.toString().padLeft(2, '0')}';
-                              buf.writeln(
-                                  '$ts  \$${pt.price.toStringAsFixed(2)}');
-                            }
-                          }
-
-                          final displayPrompt =
-                              'Analyze ${asset.symbol} — $range chart';
-
-                          Get.toNamed(
-                            AppRoutes.AI_CHAT,
-                            arguments: {
-                              'prompt': displayPrompt,
-                              'assetContext': buf.toString().trim(),
-                            },
-                          );
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 7),
-                          decoration: BoxDecoration(
-                            color: AppColors.aiStrip,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.aiBorder),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.auto_awesome_rounded,
-                                  size: 13, color: Color(0xFF92400E)),
-                              SizedBox(width: 5),
-                              Text(
-                                'Ask AI',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF92400E),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ),
                     ],
                   ),

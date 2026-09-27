@@ -8,7 +8,7 @@ import '../../../shared/widgets/nav_bar.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/portfolio_controller.dart';
 
-/// Watchlist screen — research symbols, get AI analysis.
+/// Watchlist screen — track symbols and their live prices.
 class PortfolioView extends StatefulWidget {
   const PortfolioView({super.key});
 

@@ -11,6 +11,4 @@ abstract class AppColors {
   static const Color border = Color(0xFFD4D4D8);
   static const Color success = Color(0xFF22C55E);
   static const Color danger = Color(0xFFEF4444);
-  static const Color aiStrip = Color(0xFFFFFBEB);
-  static const Color aiBorder = Color(0xFFFDE68A);
 }

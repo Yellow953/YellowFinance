@@ -248,8 +248,6 @@ class _HomeViewState extends State<HomeView> {
                         Expanded(child: _ReportsCard()),
                         const SizedBox(width: 8),
                         Expanded(child: _StocksCard()),
-                        const SizedBox(width: 8),
-                        Expanded(child: _AiCard()),
                       ],
                     ),
                     const _GroupLabel('Activity'),
@@ -1312,20 +1310,6 @@ class _ActionGroupCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-// ── AI card ───────────────────────────────────────────────────────────────
-
-class _AiCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return _QuickCard(
-      label: 'AI Chat',
-      subtitle: 'Ask anything',
-      icon: Icons.auto_awesome_rounded,
-      onTap: () => Get.toNamed(AppRoutes.AI_CHAT),
     );
   }
 }

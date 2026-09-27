@@ -6,8 +6,8 @@ import 'user_prefs.dart';
 
 /// Which income / expense categories count toward the Home screen figures.
 ///
-/// Only affects what Home shows — Transactions, Reports and the AI context
-/// still see every category.
+/// Only affects what Home shows — Transactions and Reports still see every
+/// category.
 ///
 /// *Excluded* categories are persisted rather than included ones, so a category
 /// added to `AppConstants` later shows up on Home by default instead of

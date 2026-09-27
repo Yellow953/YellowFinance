@@ -1,8 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
-import '../modules/ai/bindings/ai_binding.dart';
-import '../modules/ai/views/ai_chat_view.dart';
 import '../modules/auth/bindings/auth_binding.dart';
 import '../modules/auth/views/forgot_password_view.dart';
 import '../modules/auth/views/login_view.dart';
@@ -116,12 +114,6 @@ abstract class AppPages {
       name: AppRoutes.BUDGETS,
       page: () => const BudgetsView(),
       binding: BudgetBinding(),
-      middlewares: [AuthMiddleware()],
-    ),
-    GetPage(
-      name: AppRoutes.AI_CHAT,
-      page: () => const AiChatView(),
-      binding: AiBinding(),
       middlewares: [AuthMiddleware()],
     ),
     GetPage(

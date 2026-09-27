@@ -33,13 +33,7 @@ service cloud.firestore {
     }
 
     // ── Private per-user collections ─────────────────────────────────────────
-    // Enumerated deliberately. `ai_usage` is *not* in the list: it holds the
-    // daily Gemini call counter that `analyzeFinances` enforces its rate limit
-    // against, and a client able to write it could reset its own limit and run
-    // up the API bill. The function writes it through the Admin SDK, which
-    // bypasses rules, so denying the client costs nothing.
-    //
-    // Adding a feature collection to the app means adding it here first —
+    // Enumerated deliberately. Adding a feature collection to the app means adding it here first —
     // anything not listed is denied.
     match /users/{userId}/{collection}/{docId} {
       allow read, write: if isOwner(userId)
@@ -52,13 +46,6 @@ service cloud.firestore {
                               'todos',
                               'sports'
                             ];
-    }
-
-    // The rate-limit counter, readable by its owner so the app can show usage,
-    // never writable from a client.
-    match /users/{userId}/ai_usage/{day} {
-      allow read: if isOwner(userId);
-      allow write: if false;
     }
 
     // ── Shared sports leaderboard ────────────────────────────────────────────

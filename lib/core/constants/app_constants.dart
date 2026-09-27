@@ -5,7 +5,6 @@ abstract class AppConstants {
   static const String appTagline = 'Your money, clearly.';
 
   // Firebase Functions
-  static const String fnAnalyzeFinances = 'analyzeFinances';
   static const String fnFetchPrices = 'fetchPrices';
 
   // Firestore collections

@@ -16,6 +16,5 @@ abstract class AppRoutes {
   static const String BUDGETS = '/budgets';
   static const String DIARY = '/diary';
   static const String DIARY_ENTRY = '/diary-entry';
-  static const String AI_CHAT = '/ai-chat';
   static const String PROFILE = '/profile';
 }

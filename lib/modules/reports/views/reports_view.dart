@@ -93,6 +93,7 @@ class _ReportsViewState extends State<ReportsView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.dark,
+      extendBody: true,
       bottomNavigationBar: AppNavBar(
         currentIndex: 4,
         onTap: (i) {
@@ -213,7 +214,8 @@ class _ReportsViewState extends State<ReportsView> {
                     );
                   }
                   return ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+                    padding: EdgeInsets.fromLTRB(
+                        20, 24, 20, 32 + AppNavBar.overlap(context)),
                     children: [
                       const Text('6-Month Overview',
                           style: AppTextStyles.titleMedium),

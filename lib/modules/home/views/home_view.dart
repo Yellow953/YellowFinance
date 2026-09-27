@@ -41,6 +41,7 @@ class _HomeViewState extends State<HomeView> {
       // a light scaffold those cut-outs would read as two pale notches under
       // the header; against dark they disappear into the hero below.
       backgroundColor: AppColors.dark,
+      extendBody: true,
       bottomNavigationBar: AppNavBar(
         currentIndex: 0,
         onTap: (i) {
@@ -338,10 +339,10 @@ class _HomeViewState extends State<HomeView> {
             ),
 
             // ── Bottom padding ───────────────────────────────────────────
-            const SliverToBoxAdapter(
+            SliverToBoxAdapter(
               child: ColoredBox(
                 color: AppColors.background,
-                child: SizedBox(height: 100),
+                child: SizedBox(height: 100 + AppNavBar.overlap(context)),
               ),
             ),
 

@@ -53,6 +53,7 @@ class _TodosViewState extends State<TodosView> {
 
     return Scaffold(
       backgroundColor: AppColors.dark,
+      extendBody: true,
       bottomNavigationBar: AppNavBar(
         currentIndex: 1,
         onTap: (i) {
@@ -66,6 +67,7 @@ class _TodosViewState extends State<TodosView> {
         child: const Icon(Icons.add_rounded),
       ),
       body: SafeArea(
+        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -195,7 +197,8 @@ class _TodosViewState extends State<TodosView> {
                     color: AppColors.primary,
                     onRefresh: ctrl.refresh,
                     child: ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+                      padding: EdgeInsets.fromLTRB(
+                          20, 20, 20, 100 + AppNavBar.overlap(context)),
                       itemCount: items.length,
                       itemBuilder: (_, i) => _TodoTile(
                         todo: items[i],
@@ -595,7 +598,8 @@ class _CalendarView extends StatelessWidget {
       final dayTasks = ctrl.todosForDay(selected);
 
       return ListView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+        padding: EdgeInsets.fromLTRB(
+            20, 20, 20, 100 + AppNavBar.overlap(context)),
         children: [
           _buildMonthCard(month, selected),
           const SizedBox(height: 20),

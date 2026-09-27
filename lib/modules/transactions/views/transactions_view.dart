@@ -71,6 +71,7 @@ class _TransactionsViewState extends State<TransactionsView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.dark,
+      extendBody: true,
       bottomNavigationBar: AppNavBar(
         currentIndex: 3,
         onTap: (i) {
@@ -84,6 +85,7 @@ class _TransactionsViewState extends State<TransactionsView> {
         child: const Icon(Icons.add_rounded),
       ),
       body: SafeArea(
+        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -233,7 +235,8 @@ class _TransactionsViewState extends State<TransactionsView> {
                     onRefresh: _controller.refresh,
                     child: ListView.builder(
                       controller: _scrollCtrl,
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+                      padding: EdgeInsets.fromLTRB(
+                          20, 20, 20, 100 + AppNavBar.overlap(context)),
                       itemCount:
                           groups.length + (_controller.hasMore.value ? 1 : 0),
                       itemBuilder: (_, i) {

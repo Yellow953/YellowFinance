@@ -52,6 +52,7 @@ class _SportsViewState extends State<SportsView> {
 
     return Scaffold(
       backgroundColor: AppColors.dark,
+      extendBody: true,
       bottomNavigationBar: AppNavBar(
         currentIndex: 2,
         onTap: (i) {
@@ -67,6 +68,7 @@ class _SportsViewState extends State<SportsView> {
               child: const Icon(Icons.add_rounded),
             )),
       body: SafeArea(
+        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -256,7 +258,8 @@ class _SportsViewState extends State<SportsView> {
                     );
                   }
                   return ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+                    padding: EdgeInsets.fromLTRB(
+                        20, 20, 20, 100 + AppNavBar.overlap(context)),
                     itemCount: groups.length,
                     itemBuilder: (_, i) => _SportDayGroup(
                       date: groups[i].date,

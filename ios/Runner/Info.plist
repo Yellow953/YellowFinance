@@ -12,6 +12,16 @@
 					<string>com.googleusercontent.apps.409248573347-9b512fs4qr27d2fnu492j7g90ou01n8l</string>
 				</array>
 			</dict>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLName</key>
+				<string>com.example.yellowFinance.widget</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>yellowfinance</string>
+				</array>
+			</dict>
 		</array>
 		<key>CADisableMinimumFrameDurationOnPhone</key>
 		<true/>

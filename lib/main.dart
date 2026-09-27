@@ -13,6 +13,7 @@ import 'core/services/app_lock_service.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/connectivity_service.dart';
 import 'core/services/home_category_filter_service.dart';
+import 'core/services/home_widget_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/sync_service.dart';
 import 'core/services/user_prefs.dart';
@@ -36,12 +37,13 @@ Future<void> main() async {
   ]);
 
   // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // Initialize local notification scheduler.
   await NotificationService.init();
+
+  // Home-screen Quick Add widget taps (cold start and while running).
+  await HomeWidgetService.init();
 
   // A sign-out since the last launch asked for the cache to be wiped. This has
   // to happen here: clearPersistence() is only legal before the Firestore
@@ -94,7 +96,8 @@ Future<void> main() async {
   if (cachedUser == null) {
     initialRoute = AppRoutes.LOGIN;
   } else {
-    final isVerified = cachedUser.emailVerified ||
+    final isVerified =
+        cachedUser.emailVerified ||
         cachedUser.providerData.any((p) => p.providerId == 'google.com');
     initialRoute = isVerified ? AppRoutes.HOME : AppRoutes.VERIFY_EMAIL;
   }
@@ -134,9 +137,8 @@ class YellowFinanceApp extends StatelessWidget {
       initialRoute: initialRoute,
       getPages: AppPages.routes,
       defaultTransition: Transition.fadeIn,
-      builder: (context, child) => AppLockGate(
-        child: _OfflineBannerOverlay(child: child!),
-      ),
+      builder: (context, child) =>
+          AppLockGate(child: _OfflineBannerOverlay(child: child!)),
     );
   }
 }
@@ -191,7 +193,9 @@ class _OfflineBannerOverlay extends StatelessWidget {
                       width: double.infinity,
                       color: AppColors.dark,
                       padding: const EdgeInsets.symmetric(
-                          vertical: 10, horizontal: 16),
+                        vertical: 10,
+                        horizontal: 16,
+                      ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [

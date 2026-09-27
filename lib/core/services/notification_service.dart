@@ -5,6 +5,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../../data/models/todo_model.dart';
 import '../../routes/app_routes.dart';
+import 'pending_launch.dart';
 
 /// Maps a [Recurrence] value to the [DateTimeComponents] that makes
 /// [zonedSchedule] auto-repeat at that cadence. Returns null for one-shot tasks.
@@ -37,14 +38,6 @@ abstract class NotificationService {
   /// sheet when tapped (used by [SportReminderService]).
   static const sportsPayload = 'sports';
 
-  /// Set when a notification launches a terminated app.
-  /// HomeController consumes this on first load.
-  static String? pendingRoute;
-
-  /// Route arguments to pass alongside [pendingRoute] (e.g. 'add' to open a
-  /// page's add sheet). Consumed together with [pendingRoute].
-  static Object? pendingArguments;
-
   // ── Init ──────────────────────────────────────────────────────────────────
 
   static Future<void> init() async {
@@ -67,10 +60,9 @@ abstract class NotificationService {
     if (launchDetails?.didNotificationLaunchApp == true) {
       final payload = launchDetails?.notificationResponse?.payload;
       if (payload == sportsPayload) {
-        pendingRoute = AppRoutes.SPORTS;
-        pendingArguments = 'add';
+        PendingLaunch.set(AppRoutes.SPORTS, arguments: 'add');
       } else {
-        pendingRoute = AppRoutes.TODOS;
+        PendingLaunch.set(AppRoutes.TODOS);
       }
     }
 
@@ -78,7 +70,8 @@ abstract class NotificationService {
     // exact alarm permission — the user will see a system dialog once).
     final android = _plugin
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     await android?.requestNotificationsPermission();
     await android?.requestExactAlarmsPermission();
 

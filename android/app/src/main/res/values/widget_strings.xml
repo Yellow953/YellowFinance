@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_quick_add_description">Add an expense, income, task, workout or diary entry in one tap.</string>
+    <string name="widget_expense">Expense</string>
+    <string name="widget_income">Income</string>
+    <string name="widget_task">Task</string>
+    <string name="widget_sport">Sport</string>
+    <string name="widget_diary">Diary</string>
+</resources>

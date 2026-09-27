@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/mixins/auth_scoped_controller.dart';
 import '../../../core/services/home_category_filter_service.dart';
-import '../../../core/services/notification_service.dart';
+import '../../../core/services/pending_launch.dart';
 import '../../../core/services/sport_reminder_service.dart';
 import '../../../data/models/sport_record_model.dart';
 import '../../../data/models/todo_model.dart';
@@ -45,13 +45,13 @@ class HomeController extends GetxController with AuthScopedController {
   HomeController({
     required TransactionRepository txnRepo,
     required HomeCategoryFilterService categoryFilter,
-  })  : _txnRepo = txnRepo,
-        _categoryFilter = categoryFilter;
+  }) : _txnRepo = txnRepo,
+       _categoryFilter = categoryFilter;
 
   @override
   void onInit() {
     super.onInit();
-    _handlePendingNotification();
+    _handlePendingLaunch();
     // Re-derive as soon as the category settings change in Profile.
     ever(_categoryFilter.excludedIncome, (_) => _applyCategoryFilter());
     ever(_categoryFilter.excludedExpense, (_) => _applyCategoryFilter());
@@ -85,27 +85,26 @@ class HomeController extends GetxController with AuthScopedController {
     isLoading.value = false;
   }
 
-  void _handlePendingNotification() {
-    final route = NotificationService.pendingRoute;
-    if (route == null) return;
-    final args = NotificationService.pendingArguments;
-    NotificationService.pendingRoute = null;
-    NotificationService.pendingArguments = null;
-    Future.delayed(Duration.zero, () => Get.toNamed(route, arguments: args));
+  /// Opens the destination a notification or home-screen widget tap asked
+  /// for before the app could navigate (cold start, or while signed out).
+  void _handlePendingLaunch() {
+    final pending = PendingLaunch.consume();
+    if (pending == null) return;
+    Future.delayed(
+      Duration.zero,
+      () => Get.toNamed(pending.route, arguments: pending.arguments),
+    );
   }
 
   void _subscribeToTransactions() {
     final uid = boundUid;
     if (uid == null) return;
     isLoading.value = true;
-    _txnSub = _txnRepo.watchTransactions(uid).listen(
-      (txns) {
-        transactions.assignAll(txns);
-        _applyCategoryFilter();
-        isLoading.value = false;
-      },
-      onError: (_) => isLoading.value = false,
-    );
+    _txnSub = _txnRepo.watchTransactions(uid).listen((txns) {
+      transactions.assignAll(txns);
+      _applyCategoryFilter();
+      isLoading.value = false;
+    }, onError: (_) => isLoading.value = false);
   }
 
   /// Drops transactions in categories the user excluded from Home, then
@@ -149,24 +148,25 @@ class HomeController extends GetxController with AuthScopedController {
         .limit(200)
         .snapshots()
         .listen(
-      (snap) {
-        final all = snap.docs.map(SportRecordModel.fromFirestore).toList();
-        sportRecords.assignAll(all);
-        _computeSportStreak(all);
-      },
-      // Without a handler a stream error surfaces as an unhandled async
-      // exception. The home screen shows no error UI by design, so this just
-      // leaves the last good data on screen.
-      onError: (_) => isLoading.value = false,
-    );
+          (snap) {
+            final all = snap.docs.map(SportRecordModel.fromFirestore).toList();
+            sportRecords.assignAll(all);
+            _computeSportStreak(all);
+          },
+          // Without a handler a stream error surfaces as an unhandled async
+          // exception. The home screen shows no error UI by design, so this just
+          // leaves the last good data on screen.
+          onError: (_) => isLoading.value = false,
+        );
   }
 
   void _computeSportStreak(List<SportRecordModel> all) {
-    final dates = all
-        .map((r) => DateTime(r.date.year, r.date.month, r.date.day))
-        .toSet()
-        .toList()
-      ..sort((a, b) => b.compareTo(a));
+    final dates =
+        all
+            .map((r) => DateTime(r.date.year, r.date.month, r.date.day))
+            .toSet()
+            .toList()
+          ..sort((a, b) => b.compareTo(a));
 
     final today = DateTime.now();
     final todayOnly = DateTime(today.year, today.month, today.day);

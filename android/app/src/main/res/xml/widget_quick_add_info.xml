@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static widget: updatePeriodMillis is 0 because there is nothing to refresh. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_quick_add_description"
+    android:initialLayout="@layout/widget_quick_add"
+    android:minWidth="280dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="280dp"
+    android:minResizeHeight="110dp"
+    android:previewLayout="@layout/widget_quick_add"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />

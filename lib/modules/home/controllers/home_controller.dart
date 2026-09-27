@@ -7,10 +7,12 @@ import '../../../core/services/home_category_filter_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/sport_reminder_service.dart';
 import '../../../data/models/sport_record_model.dart';
+import '../../../data/models/todo_model.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/repositories/transaction_repository.dart';
 
-/// Drives the Home screen: balance summary + recent transactions.
+/// Drives the Home screen: balance summary, quick entry and recent
+/// transactions, plus a one-line glance at open tasks.
 class HomeController extends GetxController with AuthScopedController {
   final TransactionRepository _txnRepo;
   final HomeCategoryFilterService _categoryFilter;
@@ -27,10 +29,18 @@ class HomeController extends GetxController with AuthScopedController {
   final RxInt totalIncomeCents = 0.obs;
   final RxInt totalExpenseCents = 0.obs;
   final RxInt sportStreakDays = 0.obs;
+
+  /// Expenses dated today, among the categories visible on Home.
+  final RxInt todaySpentCents = 0.obs;
+
+  /// Tasks not yet completed, soonest due first; undated ones after.
+  final RxList<TodoModel> openTodos = <TodoModel>[].obs;
+
   final RxBool isLoading = false.obs;
 
   StreamSubscription<List<TransactionModel>>? _txnSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _sportSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _todoSub;
 
   HomeController({
     required TransactionRepository txnRepo,
@@ -52,20 +62,25 @@ class HomeController extends GetxController with AuthScopedController {
   void onUserBound(String uid) {
     _subscribeToTransactions();
     _subscribeToSports();
+    _subscribeToTodos();
   }
 
   @override
   void onUserUnbound() {
     _txnSub?.cancel();
     _sportSub?.cancel();
+    _todoSub?.cancel();
     _txnSub = null;
     _sportSub = null;
+    _todoSub = null;
     transactions.clear();
     visibleTransactions.clear();
     sportRecords.clear();
+    openTodos.clear();
     totalBalanceCents.value = 0;
     totalIncomeCents.value = 0;
     totalExpenseCents.value = 0;
+    todaySpentCents.value = 0;
     sportStreakDays.value = 0;
     isLoading.value = false;
   }
@@ -104,19 +119,23 @@ class HomeController extends GetxController with AuthScopedController {
   void _recalculate(List<TransactionModel> txns) {
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);
+    final todayStart = DateTime(now.year, now.month, now.day);
     int income = 0;
     int expense = 0;
+    int today = 0;
     for (final t in txns) {
       if (t.date.isBefore(monthStart)) continue;
       if (t.isIncome) {
         income += t.amount;
       } else {
         expense += t.amount;
+        if (!t.date.isBefore(todayStart)) today += t.amount;
       }
     }
     totalIncomeCents.value = income;
     totalExpenseCents.value = expense;
     totalBalanceCents.value = income - expense;
+    todaySpentCents.value = today;
   }
 
   void _subscribeToSports() {
@@ -180,6 +199,39 @@ class HomeController extends GetxController with AuthScopedController {
     _syncSportReminder();
   }
 
+  /// Streams open tasks for the Home glance line.
+  ///
+  /// Read here rather than through TodoController: that controller cancels
+  /// every task reminder when it is disposed, which Home would trigger each
+  /// time the user switches tabs.
+  void _subscribeToTodos() {
+    final uid = boundUid;
+    if (uid == null) return;
+    _todoSub = FirebaseFirestore.instance
+        .collection(AppConstants.colUsers)
+        .doc(uid)
+        .collection(AppConstants.colTodos)
+        .where('isCompleted', isEqualTo: false)
+        .snapshots()
+        .listen(
+          (snap) {
+            final open = snap.docs.map(TodoModel.fromFirestore).toList()
+              ..sort((a, b) {
+                final ad = a.dueDate, bd = b.dueDate;
+                if (ad == null && bd == null) {
+                  return b.createdAt.compareTo(a.createdAt);
+                }
+                if (ad == null) return 1;
+                if (bd == null) return -1;
+                return ad.compareTo(bd);
+              });
+            openTodos.assignAll(open);
+          },
+          // The glance line is optional; on error it just keeps its last state.
+          onError: (_) {},
+        );
+  }
+
   /// Whether the user has logged a sport entry for today.
   bool get sportLoggedToday => _sportLoggedToday;
   bool _sportLoggedToday = false;
@@ -192,9 +244,28 @@ class HomeController extends GetxController with AuthScopedController {
     );
   }
 
-  List<TransactionModel> get recentTransactions =>
-      visibleTransactions.take(5).toList();
-
-  List<SportRecordModel> get recentSportRecords =>
-      sportRecords.take(5).toList();
+  /// The latest transactions grouped by calendar day, newest day first, each
+  /// with the day's spending total.
+  List<({DateTime day, List<TransactionModel> txns, int spentCents})>
+  get recentByDay {
+    final groups =
+        <({DateTime day, List<TransactionModel> txns, int spentCents})>[];
+    for (final t in visibleTransactions.take(8)) {
+      final day = DateTime(t.date.year, t.date.month, t.date.day);
+      if (groups.isEmpty || groups.last.day != day) {
+        groups.add((day: day, txns: [], spentCents: 0));
+      }
+      groups.last.txns.add(t);
+    }
+    return [
+      for (final g in groups)
+        (
+          day: g.day,
+          txns: g.txns,
+          spentCents: g.txns
+              .where((t) => !t.isIncome)
+              .fold(0, (a, t) => a + t.amount),
+        ),
+    ];
+  }
 }

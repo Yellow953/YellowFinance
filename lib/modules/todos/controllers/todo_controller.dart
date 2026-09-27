@@ -337,6 +337,7 @@ class TodoController extends GetxController with AuthScopedController {
       title: title.trim(),
       note: note.trim(),
       dueDate: dueDate,
+      clearDueDate: dueDate == null,
       recurrence: dueDate != null ? recurrence : Recurrence.none,
     );
     todos[idx] = updated.copyWith(pendingSync: true);

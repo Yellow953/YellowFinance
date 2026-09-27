@@ -242,8 +242,6 @@ class _HomeViewState extends State<HomeView> {
                   children: [
                     const _GroupLabel('Money', first: true),
                     _AddTransactionCard(),
-                    const SizedBox(height: 8),
-                    SizedBox(width: double.infinity, child: _ReportsCard()),
                     const _GroupLabel('Activity'),
                     _ActionGroup(
                       actions: [
@@ -1164,20 +1162,6 @@ class _ActionHalf extends StatelessWidget {
   }
 }
 
-// ── Reports card ──────────────────────────────────────────────────────────
-
-class _ReportsCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return _QuickCard(
-      label: 'Reports',
-      subtitle: 'Monthly',
-      icon: Icons.bar_chart_rounded,
-      onTap: () => Get.toNamed(AppRoutes.REPORTS),
-    );
-  }
-}
-
 // ── Group label ───────────────────────────────────────────────────────────
 
 /// Small caps heading that separates the Home action grid into sections.
@@ -1286,64 +1270,6 @@ class _ActionGroupCard extends StatelessWidget {
                   color: dark ? AppColors.surface : AppColors.textPrimary,
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Shared quick-action card ──────────────────────────────────────────────
-
-class _QuickCard extends StatelessWidget {
-  final String label;
-  final String subtitle;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _QuickCard({
-    required this.label,
-    required this.subtitle,
-    required this.icon,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.dark,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: AppColors.primary, size: 18),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: AppColors.surface,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
             ),
           ],
         ),

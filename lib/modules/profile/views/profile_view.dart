@@ -49,30 +49,6 @@ class _ProfileViewState extends State<ProfileView> {
                               color: AppColors.surface, size: 18),
                         ),
                       ),
-                      const Spacer(),
-                      GestureDetector(
-                        onTap: _controller.signOut,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.logout_rounded,
-                                  size: 14, color: AppColors.textMuted),
-                              SizedBox(width: 6),
-                              Text(
-                                'Sign out',
-                                style: TextStyle(
-                                    fontSize: 13, color: AppColors.textMuted),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 24),

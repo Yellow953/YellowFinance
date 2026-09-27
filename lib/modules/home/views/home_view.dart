@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
@@ -8,7 +9,6 @@ import '../../../core/utils/formatters.dart';
 import '../../../routes/app_routes.dart';
 import '../../../shared/widgets/link_row.dart';
 import '../../../shared/widgets/nav_bar.dart';
-import '../../../shared/widgets/user_avatar.dart';
 import '../../../shared/widgets/skeleton.dart';
 import '../../../shared/widgets/transaction_tile.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -45,14 +45,13 @@ class _HomeViewState extends State<HomeView> {
       body: CustomScrollView(
           physics: const ClampingScrollPhysics(),
           slivers: [
-            // ── Pinned greeting row ──────────────────────────────────────
+            // ── Pinned status-bar strip ──────────────────────────────────
             SliverAppBar(
               pinned: true,
               automaticallyImplyLeading: false,
               backgroundColor: AppColors.dark,
               surfaceTintColor: Colors.transparent,
-              toolbarHeight: 64,
-              titleSpacing: 20,
+              toolbarHeight: 0,
               // Rounds the header itself rather than relying on the light
               // sheet's rounded top, which scrolls away — so the corners
               // survive into the pinned state instead of squaring off.
@@ -60,37 +59,13 @@ class _HomeViewState extends State<HomeView> {
                 borderRadius:
                     BorderRadius.vertical(bottom: Radius.circular(28)),
               ),
-              title: Row(
-                children: [
-                  Expanded(
-                    child: Obx(() {
-                      final name = (_authCtrl.user.value?.displayName ?? '')
-                          .split(' ')
-                          .first;
-                      return Text(
-                        'Hello, $name 👋',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textMuted,
-                        ),
-                      );
-                    }),
-                  ),
-                  Obx(() => GestureDetector(
-                        onTap: () => Get.toNamed(AppRoutes.PROFILE),
-                        child: UserAvatar(user: _authCtrl.user.value),
-                      )),
-                  const SizedBox(width: 20),
-                ],
-              ),
             ),
 
             // ── Balance + stats (scrolls away) ──────────────────────────
             SliverToBoxAdapter(
               child: Container(
                 color: AppColors.dark,
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -102,23 +77,9 @@ class _HomeViewState extends State<HomeView> {
                               fontSize: 13, color: AppColors.textMuted),
                         ),
                         const Spacer(),
-                        Obx(() => GestureDetector(
+                        Obx(() => _PrivacyToggle(
+                              hidden: _authCtrl.hideBalances.value,
                               onTap: _authCtrl.toggleHideBalances,
-                              child: Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.08),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Icon(
-                                  _authCtrl.hideBalances.value
-                                      ? Icons.visibility_off_outlined
-                                      : Icons.visibility_outlined,
-                                  size: 18,
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
                             )),
                       ],
                     ),
@@ -227,8 +188,15 @@ class _HomeViewState extends State<HomeView> {
                   return const ColoredBox(
                     color: AppColors.background,
                     child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 40),
-                      child: _EmptyTransactions(),
+                      padding: EdgeInsets.fromLTRB(20, 12, 20, 20),
+                      child: _EmptyCard(
+                        child: _EmptyState(
+                          icon: Icons.receipt_long_rounded,
+                          tint: AppColors.dark,
+                          title: 'No transactions yet',
+                          subtitle: 'Tap Add Expense to record your first one',
+                        ),
+                      ),
                     ),
                   );
                 }
@@ -467,6 +435,79 @@ class _HeroAmount extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Pill toggle for privacy mode. Names the action it will take ("Hide" /
+/// "Show") and turns yellow while amounts are masked, so the active state
+/// is obvious at a glance.
+class _PrivacyToggle extends StatelessWidget {
+  const _PrivacyToggle({required this.hidden, required this.onTap});
+
+  final bool hidden;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = hidden ? AppColors.primary : AppColors.textMuted;
+    return Semantics(
+      button: true,
+      label: hidden ? 'Show amounts' : 'Hide amounts',
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: hidden
+                ? AppColors.primary.withValues(alpha: 0.14)
+                : Colors.white.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: hidden
+                  ? AppColors.primary.withValues(alpha: 0.35)
+                  : Colors.transparent,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                transitionBuilder: (child, anim) => ScaleTransition(
+                  scale: anim,
+                  child: FadeTransition(opacity: anim, child: child),
+                ),
+                child: Icon(
+                  hidden
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_rounded,
+                  key: ValueKey(hidden),
+                  size: 16,
+                  color: fg,
+                ),
+              ),
+              const SizedBox(width: 6),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: fg,
+                ),
+                child: Text(hidden ? 'Show' : 'Hide'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -803,36 +844,11 @@ class _TasksSection extends StatelessWidget {
             border: Border.all(color: AppColors.border),
           ),
           child: visible.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: AppColors.success.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.task_alt_rounded,
-                          size: 20,
-                          color: AppColors.success,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'All clear — no open tasks',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                    ],
-                  ),
+              ? const _EmptyState(
+                  icon: Icons.task_alt_rounded,
+                  tint: AppColors.success,
+                  title: 'All clear',
+                  subtitle: 'No open tasks right now',
                 )
               : Column(
                   children: [
@@ -1179,24 +1195,79 @@ class _HeaderPill extends StatelessWidget {
 
 // ── Empty state ───────────────────────────────────────────────────────────
 
-class _EmptyTransactions extends StatelessWidget {
-  const _EmptyTransactions();
+/// Bordered surface card matching the Tasks section container, so empty
+/// states read the same across home sections.
+class _EmptyCard extends StatelessWidget {
+  const _EmptyCard({required this.child});
+
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Shared empty-state row: tinted icon tile + title and muted subtitle.
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({
+    required this.icon,
+    required this.tint,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
+  final Color tint;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
         children: [
-          const Icon(Icons.receipt_long_outlined,
-              size: 48, color: AppColors.textMuted),
-          const SizedBox(height: 12),
-          Text('No transactions yet',
-              style: AppTextStyles.bodyMedium
-                  .copyWith(color: AppColors.textMuted)),
-          const SizedBox(height: 4),
-          const Text('Tap Add Expense to record your first one',
-              style: AppTextStyles.bodySmall),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: tint.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 20, color: tint),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

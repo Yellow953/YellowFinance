@@ -18,6 +18,7 @@ class AppTextField extends StatelessWidget {
   final TextCapitalization textCapitalization;
   final void Function(String)? onChanged;
   final bool enabled;
+  final bool autofocus;
 
   const AppTextField({
     super.key,
@@ -35,6 +36,7 @@ class AppTextField extends StatelessWidget {
     this.textCapitalization = TextCapitalization.none,
     this.onChanged,
     this.enabled = true,
+    this.autofocus = false,
   });
 
   @override
@@ -49,6 +51,7 @@ class AppTextField extends StatelessWidget {
       textCapitalization: textCapitalization,
       onChanged: onChanged,
       enabled: enabled,
+      autofocus: autofocus,
       style: AppTextStyles.bodyLarge,
       decoration: InputDecoration(
         labelText: label,

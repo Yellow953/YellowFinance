@@ -5,6 +5,7 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/safe_insets.dart';
 import '../../../data/models/todo_model.dart';
 import '../../../shared/widgets/app_bottom_sheet.dart';
+import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/nav_bar.dart';
 import '../../../shared/widgets/sync_dot.dart';
 import '../controllers/todo_controller.dart';
@@ -869,8 +870,11 @@ class _RecurrencePicker extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 14, vertical: 9),
                   decoration: BoxDecoration(
-                    color: selected ? AppColors.primary : AppColors.background,
+                    color: selected ? AppColors.primary : AppColors.surface,
                     borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: selected ? AppColors.primary : AppColors.border,
+                    ),
                   ),
                   child: Text(
                     label,
@@ -1061,52 +1065,21 @@ class _AddTodoSheetState extends State<_AddTodoSheet> {
             const SizedBox(height: 16),
 
             // Title field
-            TextField(
+            AppTextField(
+              label: 'Task title',
               controller: _titleCtrl,
               autofocus: true,
               textCapitalization: TextCapitalization.sentences,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Task title',
-                hintStyle: const TextStyle(
-                    color: AppColors.textMuted,
-                    fontWeight: FontWeight.w400),
-                filled: true,
-                fillColor: AppColors.background,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
-              ),
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
             // Note field
-            TextField(
+            AppTextField(
+              label: 'Note (optional)',
               controller: _noteCtrl,
               textCapitalization: TextCapitalization.sentences,
-              style: const TextStyle(
-                  fontSize: 14, color: AppColors.textPrimary),
               maxLines: 2,
-              decoration: InputDecoration(
-                hintText: 'Note (optional)',
-                hintStyle: const TextStyle(color: AppColors.textMuted),
-                filled: true,
-                fillColor: AppColors.background,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
-              ),
             ),
 
             const SizedBox(height: 12),
@@ -1124,8 +1097,13 @@ class _AddTodoSheetState extends State<_AddTodoSheet> {
                     decoration: BoxDecoration(
                       color: _dueDate != null
                           ? AppColors.dark
-                          : AppColors.background,
+                          : AppColors.surface,
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _dueDate != null
+                            ? AppColors.dark
+                            : AppColors.border,
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1183,8 +1161,13 @@ class _AddTodoSheetState extends State<_AddTodoSheet> {
                       decoration: BoxDecoration(
                         color: _dueTime != null
                             ? AppColors.primary
-                            : AppColors.background,
+                            : AppColors.surface,
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _dueTime != null
+                              ? AppColors.primary
+                              : AppColors.border,
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,

@@ -31,6 +31,13 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- Widget deep links are routed by HomeWidgetService. Left on,
+                 Flutter would also use the link's path as the initial route on
+                 a cold start, which GetX doesn't know — a blank screen. -->
+            <meta-data
+              android:name="flutter_deeplinking_enabled"
+              android:value="false"
+              />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
